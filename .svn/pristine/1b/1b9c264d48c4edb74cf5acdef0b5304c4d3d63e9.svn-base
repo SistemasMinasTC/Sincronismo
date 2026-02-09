@@ -1,0 +1,145 @@
+﻿/* Background geral */
+body {
+    background: url('/static/images/FundoMinas.png') no-repeat center center fixed;
+    background-size: cover;
+    opacity: 1; /* Opacidade da imagem fica no container abaixo */
+}
+
+/* Área fora do menu (formulário) */
+#form {
+    background-color: rgba(255, 255, 255, 0.8); /* deixa o fundo branco meio transparente */
+    font-size: 18px; /* Aumenta o tamanho da fonte */
+}
+
+    #form label {
+        font-size: 18px; /* Labels maiores */
+    }
+
+    /* Opcional: Aumentar ainda o input, select e button */
+    #form input, #form select, #form button {
+        font-size: 18px;
+    }
+
+/* Deixa o fundo geral com a imagem mais transparente usando pseudo-elemento */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 250px; /* Deixa espaço para o menu */
+    width: calc(100% - 250px);
+    height: 100%;
+    background: url('/static/images/FundoMinas.png') no-repeat center center fixed;
+    background-size: cover;
+    opacity: 0.2; /* Ajuste aqui a transparência da imagem! */
+    z-index: -1;
+}
+
+
+/* Menu lateral fixo */
+.menu {
+    background-color: #004078;
+    height: 100vh;
+    padding: 30px 20px;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: fixed;
+    width: 250px; /* Largura fixa do menu */
+    top: 0;
+    left: 0;
+}
+
+    .menu h2 {
+        font-size: 24px;
+        margin-bottom: 40px;
+    }
+
+    .menu button {
+        width: 100%;
+        margin: 10px 0;
+        background-color: #30b2ef;
+        border: none;
+        padding: 12px;
+        border-radius: 12px;
+        font-size: 16px;
+        cursor: pointer;
+        color: white;
+        transition: background-color 0.3s ease;
+    }
+
+        .menu button:hover {
+            background-color: #0077cc;
+        }
+
+/* Área principal */
+.content {
+    margin-left: 250px; /* Deixa espaço para o menu */
+    padding: 40px;
+    width: calc(100% - 250px); /* Ocupa todo o resto da tela */
+    box-sizing: border-box;
+}
+
+/* 🔥 FORMULÁRIO largão */
+input, select, button {
+    width: 100%;
+    padding: 16px;
+    margin: 16px 0;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    font-size: 18px;
+    box-sizing: border-box;
+}
+
+/* Botões de formulário */
+button {
+    background-color: #004078;
+    color: white;
+    border: none;
+    transition: background-color 0.3s ease;
+}
+
+    button:hover {
+        background-color: #003366;
+    }
+
+/* Datatables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+    table th, table td {
+        padding: 14px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+        font-size: 16px;
+    }
+
+    table tr:hover {
+        background-color: #f1f1f1;
+    }
+
+/* Scroll Mensagens */
+.scrollable {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    padding: 12px;
+    border-radius: 10px;
+    height: 150px;
+    overflow-y: auto;
+    margin-top: 20px;
+}
+
+
+.footer{
+    display: none;
+}
+
+.modal-content {
+    width: 900px !important;
+}
+
+
+

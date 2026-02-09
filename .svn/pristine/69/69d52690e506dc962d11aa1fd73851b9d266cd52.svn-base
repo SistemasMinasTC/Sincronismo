@@ -1,0 +1,262 @@
+#!/usr/bin/python
+#
+
+import time, threading, logging, heapq
+from importlib import import_module
+from recordtype import recordtype
+from datetime import datetime
+from biblioteca.conexoes import *
+from copy import copy
+from logging.handlers import RotatingFileHandler
+logging.basicConfig (
+    level = logging.INFO,
+    format = "%(asctime)s %(name)s:%(funcName)s %(levelname)s: %(message)s",
+    handlers = [
+        RotatingFileHandler(
+            filename = "/var/log/mc_log" if os.getenv('AMBIENTE_NSS') == 'PRODUCAO' else "/tmp/sincronismo_teste.log",
+            encoding = "utf-8",
+            maxBytes = 0x500000,
+            backupCount = 3
+        )
+    ]
+)
+
+class Sincroniza(object):
+    def __init__(self, nome, *tabelas):
+        self.STOP = False
+        self.Pause = False
+
+        self.nome = nome
+        self.banco = 'minas'
+        self.tabelas = {tab: import_module(f'sincronismo.{tab}') for tab in tabelas}
+
+    def start(self):
+        self.STOP = False
+        self.Pause = False
+        self.sincronismo = threading.Thread(target=self.process, args=(0,0))
+        self.sincronismo.start()
+        self.recuperacao = threading.Thread(target=self.process, args=(1,2))
+        self.recuperacao.start()
+
+    def stop(self):
+        self.STOP = True
+        self.sincronismo.join()
+        print('sincronismo interrompido')
+
+    def process(self, tentativaMinima, tentativaMaxima):
+        print(f'\n\nsincronismo {self.nome} iniciado')
+        while not self.STOP:
+            # Conexões que serão usadas para os módulos que processam cada tabela
+            #
+            conn_ifx = conecta_informix(self.banco)
+            conn_sql = conecta_mssql()
+
+            # Conexões do sincronismo
+            #
+            ifx = conecta_informix(self.banco)
+            cr_ifx = ifx.cursor()
+            cr_ifx_update = ifx.cursor()
+
+            sql = conecta_mssql()
+            cr_sql = sql.cursor()
+
+            # driver do sql só suporta um cursor ativo por vez
+            #
+            sql_update = conecta_mssql()
+            cr_sql_update = sql_update.cursor()
+
+            cr_ifx.execute(f"""
+                   select
+                    id,
+                    tentativas,
+                    data_hora,
+                    'ifx' as origem,
+                    banco,
+                    tabela,
+                    operacao,
+                    pk,
+                    excluido
+                from mc_log
+                where
+                    id in
+                    (
+                        (
+                           select id from (select banco,tabela,pk,min(id) as id from mc_log where tentativas between {tentativaMinima} and {tentativaMaxima} group by banco,tabela,pk) as Repescagem
+                        )
+                     )
+                order by tentativas,data_hora
+            """)
+
+            cr_sql.execute(f"""
+                   select
+                    id,
+                    tentativas,
+                    data_hora,
+                    'sql' as origem,
+                    banco,
+                    tabela,
+                    operacao,
+                    pk,
+                    excluido
+                from mc_log with (nolock)
+                where
+                    id in
+                    (
+                        (
+                           select id from (select tabela,pk,min(id) as id from mc_log with (nolock) where tentativas between {tentativaMinima} and {tentativaMaxima} group by tabela,pk) as Repescagem
+                        )
+                     )
+                order by tentativas,data_hora
+            """
+            )
+
+            Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
+
+            processados=0
+
+            #print(f"inicio do merge {self.nome} - {'prioridade' if tentativaMaxima == 0 else 'recuperacao'}")
+
+            for l in heapq.merge(cr_ifx,cr_sql, key = lambda x: x[1:3]):
+                if self.STOP:
+                    break
+
+                linha = Linha(*l)
+
+                if linha.tabela not in self.tabelas:
+                    continue
+
+                if linha.origem == 'ifx':
+                    conexao = 'ifx'
+                    cursor = cr_ifx
+                    cursor_update = cr_ifx_update
+                else:
+                    conexao = 'sql'
+                    cursor = cr_sql
+                    cursor_update = cr_sql_update
+
+                print(linha, end = ' ')
+                mensagemErro = None
+                dataHoraInicio = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+
+                try:
+                    self.tabelas[linha.tabela].convert(conn_ifx, conn_sql, copy(linha))
+                except Exception as erro:
+                    mensagemErro = erro.__str__()
+
+                logging.info(f'{linha} - {mensagemErro if mensagemErro else "Ok"}')
+
+
+                banco = f" = '{linha.banco}'" if linha.banco else ' is null'
+
+                if not mensagemErro:
+                    cursor_update.execute(f"""
+                        delete from mc_log
+                        where
+                            banco {banco} and
+                            tabela = '{linha.tabela}' and
+                            pk = '{linha.pk}' and
+                            data_hora <= '{dataHoraInicio}'
+                        """)
+                    print('Ok')
+                else:
+                    cursor_update.execute(f"""
+                        update mc_log
+                        set
+                            atualizacao = {'current' if conexao == 'ifx' else 'getdate()'},
+                            status = ?,
+                            tentativas = tentativas + 1
+                        where id = ?
+                    """,(mensagemErro, linha.id,))
+
+                    cursor_update.execute(f"""
+                        delete from mc_log
+                        where
+                            banco {banco} and
+                            tabela = '{linha.tabela}' and
+                            pk = '{linha.pk}' and
+                            data_hora <= '{dataHoraInicio}' and
+                            tentativas = 0
+                        """)
+
+                    print(mensagemErro)
+
+                processados += 1
+
+            if processados < 250:
+                time.sleep(3)
+
+            #print(f"fim do merge {self.nome} - {'prioridade' if tentativaMaxima == 0 else 'recuperacao'}")
+
+def main():
+    sincronizador = Sincroniza(
+    'geral',                    # Nome
+    #
+    # informix -> mssql
+    #
+    '_cota_',                   # Cota
+    '_movimentacao_receita_',   # ReceitaCota
+    'acerto_cancel_rec',        # ReceitaCota (update)
+    'acerto_cancel',            # Acerto
+    'acompanhante',             # Acompanhante
+    'acomp_associado',          # AcompanhanteAssociado
+    'agregado',                 # Adesao
+    'aluno',                    # Aluno
+    'aluno_licenca',            # LicencaMedica
+    'associado',                # Pessoa
+    'associado_excl',           # Pessoa
+    'associado_atestado',       # PessoaAtestadoMedico
+    'atestado',                 # AtestadoMedico
+    'banco',                    # Banco
+    'cota_associado',           # Associado
+    'cota_debito_auto',         # DebitoAutomatico
+    'cota_pagto_rejeit',        # PagamentoRejeitado
+    'cota_taxa_freq',           # Taxa Frequencia
+    'cidadao',                  # Usuarios
+    'curso',                    # Curso
+    'dias_let_curso',           # Inclui a turma no mc_log
+    #'disp_entrada_saida',       # DipositivoAcesso
+    'fatura',                   # Fatura
+    'horario_pessoa',           # HorarioAcompanhante
+    'item_fat_eterno',          # ItemFatura
+    'modalidade',               # ModalidadeEsportiva
+    'mot_liberacao',            # MotivoLiberacao
+    'mot_movto',                # Motivo
+    'nacionalidade',            # Nacionalidade
+    'nivel',                    # Nivel
+    'parcela_plano',            # ParcelaPlanoCobranca
+    'pessoa_fisica',            # Update em cota_associado
+    'plano_cobranca',           # PlanoCobranca
+    'plano_receita',            # ReceitaPlanoCobranca
+    #'portaria',                 # Portaria
+    'profissoes',               # Profissao
+    'receita',                  # Receita
+    'rec_nau_minas',            # EquivalenciaReceita
+    'taxa_parentesco',          # Vinculo e TaxaDependente
+    'tipo_acompanhante',        # TipoAcompanhante
+    'tipo_concessao',           # ClasseCota
+    'tipo_contribuinte',        # ClasseCota
+    'tipo_cota',                # ClasseCota
+    'tipo_desconto',            # ClasseCota
+    'tipo_documento',           # TipoDocumento
+    'tipo_isencao',             # TipoIsencao
+    'tipo_receita',             # TipoReceita
+    'tmp_local',                # Local
+    'turma',                    # Turma
+    'uf',                       # UF
+    'unidade',                  # Unidade
+    'usuario',                  # usuario
+    #
+    # mssql -> informix
+    #
+    'Acerto',                    # acerto e acerto_cancel_rec
+    'Nacionalidade',            # nacionalidade
+    'TipoDocumento',            # tipo_documento
+    'ReceitaCota',              # receita_cota, posicao_cota, receita_assoc_excl, posicao_assoc_excl
+    'Fatura',                   # fatura
+    'ItemFatura'                # item_fatura, item_fat_eterno, item_fat_receita
+    )
+    sincronizador.process(0,3)
+
+if __name__ == "__main__":
+    logging.info('Início do sincronismo')
+    main()

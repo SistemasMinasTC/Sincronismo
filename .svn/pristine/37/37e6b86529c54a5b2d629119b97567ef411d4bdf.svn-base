@@ -1,0 +1,75 @@
+#!/usr/bin/python
+#
+
+from conexoes import *
+
+def createTriggersInformix(tabela: str, primaryKey: list):
+   ifx = conecta_informix()
+
+   cr = ifx.cursor()
+
+   cr.execute(f'drop trigger if exists mc_insert_{tabela}');
+
+   cr.execute(f"""
+      create trigger mc_insert_{tabela} insert on {tabela} referencing new as novo
+      for each row
+         when (not sincronizando())
+         (
+            insert into mc_log(data_hora,tabela,operacao,pk)
+            values
+            (
+               current,
+               '{tabela}',
+               'insert',
+               novo.{"||'|'||novo.".join(primaryKey)}
+            )
+         );
+   """)
+
+   cr.execute(f'drop trigger if exists mc_update_{tabela}');
+
+   cr.execute(f"""
+      create trigger mc_update_{tabela} update on {tabela} referencing new as novo
+      for each row
+         when (not sincronizando())
+         (
+            insert into mc_log(data_hora,tabela,operacao,pk)
+            values
+            (
+               current,
+               '{tabela}',
+               'update',
+               novo.{"||'|'||novo.".join(primaryKey)}
+            )
+         );
+   """)
+
+   cr.execute(f'drop trigger if exists mc_delete_{tabela}');
+
+   cr.execute(f"""
+      create trigger mc_delete_{tabela} delete on {tabela} referencing old as velho
+      for each row
+         when (not sincronizando())
+         (
+            insert into mc_log(data_hora,tabela,operacao,pk)
+            values
+            (
+               current,
+               '{tabela}',
+               'delete',
+               velho.{"||'|'||velho.".join(primaryKey)}
+            )
+         );
+   """)
+
+
+# Teste
+#
+if __name__ == "__main__":
+   try:
+      createTriggersInformix('nacionalidade',(
+         'cod_nacionalidade',
+      ))
+   except Exception as erro:
+      print(erro)
+

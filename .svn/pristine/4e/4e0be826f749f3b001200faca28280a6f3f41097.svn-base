@@ -1,0 +1,113 @@
+#!/usr/bin/python
+#
+
+from recordtype import recordtype
+
+def convert(conn_ifx, conn_sql, linha_log):
+   Chave = recordtype('Chave', 'cod_nacionalidade')
+   chave = Chave(*linha_log.pk.split('|'))
+
+   cr_sql = conn_sql.cursor()
+   try:
+      cr_sql.execute('create table #sincronizando (dummy char(1))')
+   except:
+      pass
+
+   cr_ifx = conn_ifx.cursor()
+   cr_ifx.execute('execute procedure em_sincronismo()')
+
+   if linha_log.operacao == 'delete':
+      cr_sql.execute(f"""
+         delete from Nacionalidade
+         where
+            IdNacionalidade = ?
+      """, (
+         chave.cod_nacionalidade,
+      ))
+
+      cr_sql.close()
+      return
+
+   cr_ifx.execute("""
+      select
+         cod_nacionalidade,
+         nom_pais,
+         nom_nacionalidade
+      from nacionalidade
+      where
+         cod_nacionalidade = ?
+   """,(
+      chave.cod_nacionalidade,
+   ))
+
+   Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
+   linha = cr_ifx.fetchone()
+   origem = Linha(*linha) if linha else None
+
+   cr_sql.execute("""
+      update Nacionalidade set
+         Pais = ?,
+         Nome = ?,
+         UltimaAlteracao = getdate()
+      where
+         IdNacionalidade = ?
+   """,(
+         origem.nom_pais,
+         origem.nom_nacionalidade,
+         chave.cod_nacionalidade,
+   ))
+
+   if cr_sql.rowcount == 0:
+      try:
+         cr_sql.execute('set identity_insert Nacionalidade on')
+      except:
+         pass
+
+      cr_sql.execute(f"""
+         insert into Nacionalidade
+         (
+            IdNacionalidade,
+            Pais,
+            Nome
+         ) values (?,?,?)
+      """,(
+         origem.cod_nacionalidade,
+         origem.nom_pais,
+         origem.nom_nacionalidade
+      ))
+
+   cr_sql.close()
+
+# Teste
+#
+if __name__ == "__main__":
+   import sys
+   from conexoes import *
+
+   ifx = conecta_informix()
+   if not ifx:
+      print('Banco informix não disponível')
+      sys.exit()
+
+   sql = conecta_mssql()
+   if not sql:
+      print('Banco mssql não disponível')
+      sys.exit()
+   cr_ifx = ifx.cursor()
+
+   cr_ifx.execute("""
+      select
+         id,
+         data_hora,
+         tabela,
+         operacao,
+         pk
+      from mc_log
+      where
+         tabela = 'nacionalidade'
+   """)
+   Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
+
+   for linha in [Linha(*l) for l in cr_ifx]:
+      print(linha)
+      convert(ifx, sql, linha)

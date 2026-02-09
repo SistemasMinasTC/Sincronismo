@@ -1,0 +1,169 @@
+#!/usr/bin/python
+#
+
+import time, threading, logging
+from importlib import import_module
+from recordtype import recordtype
+from conexoes import *
+from logging.handlers import RotatingFileHandler
+logging.basicConfig (
+   level = logging.INFO,
+   format = "%(asctime)s %(name)s:%(funcName)s %(levelname)s: %(message)s",
+   handlers = [
+      RotatingFileHandler(
+         filename = "/var/log/sincronismo.log" if os.getenv('AMBIENTE_NSS') == 'PRODUCAO' else "/tmp/sincronismo_teste.log",
+         encoding = "utf-8",
+         maxBytes = 0x500000,
+         backupCount = 3
+      )
+   ]
+)
+
+class Sincroniza:
+   def __init__(self,*tabelas):
+      self.STOP = False
+      self.Pause = False
+
+      self.tabelas = {t:import_module(t) for t in tabelas}
+
+      self.conn_ifx = conecta_informix()
+      self.conn_sql = conecta_mssql()
+
+   def start(self):
+      self.STOP = False
+      self.Pause = False
+      self.sincronismo = threading.Thread(target=self.process, args=())
+      self.sincronismo.start()
+      print('sincronismo iniciado')
+
+   def stop(self):
+      self.STOP = True
+      self.sincronismo.join()
+      print('sincronismo interrompido')
+
+   def process(self):
+      while not self.STOP:
+         ifx = conecta_informix()
+         cr_ifx = ifx.cursor()
+         cr_ifx.execute("set lock mode to wait 60")
+
+         cr_ifx_update = ifx.cursor()
+         cr_ifx_update.execute("set lock mode to wait 60")
+
+         sql = conecta_mssql()
+         cr_sql = sql.cursor()
+
+         # driver do sql só suporta um cursor ativo por vez
+         #
+         sql_update = conecta_mssql()
+         cr_sql_update = sql_update.cursor()
+
+         cr_ifx.execute("""
+            select
+               id,
+               data_hora,
+               tabela,
+               operacao,
+               pk_sql,
+               pk_ifx
+            from sincronismo_log
+            where
+               atualizacao is null
+            order by data_hora
+         """)
+         Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
+
+         cr_sql.execute("""
+            select
+               id,
+               data_hora,
+               tabela,
+               operacao,
+               pk_sql,
+               pk_ifx
+            from sincronismo.log with (nolock)
+            where
+               atualizacao is null
+            order by data_hora
+         """)
+
+
+         # Faz as primeiras leituras
+         #
+         r_ifx = cr_ifx.fetchone()
+         r_ifx = Linha(*r_ifx) if r_ifx else None
+
+         r_sql = cr_sql.fetchone()
+         r_sql = Linha(*r_sql) if r_sql else None
+
+         while r_ifx or r_sql:
+            if self.STOP:
+               break
+
+            if r_ifx and r_sql:
+               if r_ifx.data_hora < r_sql.data_hora:
+                  processa = 'ifx'
+               else:
+                  processa = 'sql'
+            elif r_ifx and not r_sql:
+               processa = 'ifx'
+            elif not r_ifx and r_sql:
+               processa = 'sql'
+            else:
+               processa = None
+
+            if processa == 'ifx':
+               if r_ifx.tabela in self.tabelas:
+                  print('ifx',r_ifx,end=' ')
+                  try:
+                     resultado = self.tabelas[r_ifx.tabela].convert(self.conn_ifx,self.conn_sql,r_ifx)
+                  except Exception as erro:
+                     resultado = erro.__str__()
+
+                  if resultado == 'Ok':
+                     logging.info(f'ifx {r_ifx} - {resultado}')
+                     cr_ifx_update.execute('delete from sincronismo_log where id = ?',(r_ifx.id,))
+                  else:
+                     logging.error(f'ifx {r_ifx} - {resultado}')
+                     cr_ifx_update.execute('update sincronismo_log set atualizacao = current, status = ? where id = ?',(resultado, r_ifx.id,))
+
+               r_ifx = cr_ifx.fetchone()
+               r_ifx = Linha(*r_ifx) if r_ifx else None
+
+            elif processa == 'sql':
+               if r_sql.tabela in self.tabelas:
+                  print('sql',r_sql,end=' ')
+                  try:
+                     resultado = self.tabelas[r_sql.tabela].convert(self.conn_ifx,self.conn_sql,r_sql)
+                  except Exception as erro:
+                     resultado = erro.__str__()
+
+                  print(resultado)
+
+                  if resultado == 'Ok':
+                     logging.info(f'sql {r_sql} - {resultado}')
+                     cr_sql_update.execute('delete from sincronismo.log where id = ?',(r_sql.id,))
+                  else:
+                     logging.error(f'sql {r_sql} - {resultado}')
+                     cr_sql_update.execute('update sincronismo.log set atualizacao = getdate(), status = ? where id = ?',(f'{resultado}', r_sql.id,))
+
+               r_sql = cr_sql.fetchone()
+               r_sql = Linha(*r_sql) if r_sql else None
+
+         time.sleep(5)
+
+
+def main():
+   sincronizador = Sincroniza(
+      'GeracaoCobranca',
+      'Fatura',
+      'ItemFatura',
+      '_movimentacao_receita_',
+      'fatura',
+      'item_fatura',
+   )
+   sincronizador.process()
+
+if __name__ == "__main__":
+   logging.info('Início do sincronismo')
+   main()

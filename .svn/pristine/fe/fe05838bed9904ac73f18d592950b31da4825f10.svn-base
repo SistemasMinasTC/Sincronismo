@@ -1,0 +1,106 @@
+#!/usr/bin/python
+#
+import os
+import logging
+from logging.handlers import RotatingFileHandler
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)s:%(funcName)s %(levelname)s: %(message)s",
+    handlers=[
+        RotatingFileHandler(
+            filename="/var/log/minas_corporativo.log" if os.getenv('AMBIENTE_NSS') == 'PRODUCAO' else "/tmp/minas_corporativo.log",
+            encoding="utf-8",
+            maxBytes=0x500000,
+            backupCount=3
+        )
+    ]
+)
+
+from pywebio import start_server
+from biblioteca.sincroniza import Sincroniza
+from front.interface import Interface
+
+# Instâncias do sincronizador
+
+sincronizador = {}
+sincronizador['geral'] = Sincroniza (
+    'geral',                    # Nome
+    #
+    # informix -> mssql
+    #
+    '_cota_',                   # Cota
+    '_movimentacao_receita_',   # ReceitaCota
+    'acerto_cancel_rec',        # ReceitaCota (update)
+    #'acerto_cancel',            # Acerto
+    'acompanhante',             # Acompanhante
+    'acomp_associado',          # AcompanhanteAssociado
+    'agregado',                 # Adesao
+    'aluno',                    # Aluno
+    'associado',                # Pessoa
+    'associado_excl',           # Pessoa
+    'banco',                    # Banco
+    'cota_associado',           # Associado
+    'cota_debito_auto',         # DebitoAutomatico
+    'cota_pagto_rejeit',        # PagamentoRejeitado
+    'cota_taxa_freq',           # Taxa Frequencia
+    'cidadao',                  # Usuarios
+    'curso',                    # Curso
+    'disp_entrada_saida',       # DipositivoAcesso
+    'fatura',                   # Fatura
+    'horario_pessoa',           # HorarioAcompanhante
+    'item_fat_eterno',          # ItemFatura
+    'modalidade',               # ModalidadeEsportiva
+    'mot_liberacao',            # MotivoLiberacao
+    'mot_movto',                # Motivo
+    'nacionalidade',            # Nacionalidade
+    'nivel',                    # Nivel
+    'parcela_plano',            # ParcelaPlanoCobranca
+    'plano_cobranca',           # PlanoCobranca
+    'plano_receita',            # ReceitaPlanoCobranca
+    'portaria',                 # Portaria
+    'profissoes',               # Profissao
+    'receita',                  # Receita
+    'rec_nau_minas',            # EquivalenciaReceita
+    'taxa_parentesco',          # Vinculo e TaxaDependente
+    'tipo_acompanhante',        # TipoAcompanhante
+    'tipo_concessao',           # ClasseCota
+    'tipo_contribuinte',        # ClasseCota
+    'tipo_cota',                # ClasseCota
+    'tipo_desconto',            # ClasseCota
+    'tipo_documento',           # TipoDocumento
+    'tipo_isencao',             # TipoIsencao
+    'tipo_receita',             # TipoReceita
+    'tmp_local',                # Local
+    'turma',                    # Turma
+    'uf',                       # UF
+    'unidade',                  # Unidade
+    'usuario',                  # usuario
+    #
+    # mssql -> informix
+    #
+    'Nacionalidade',            # nacionalidade
+    'TipoDocumento',            # tipo_documento
+)
+sincronizador['geral'].start()
+
+sincronizador['portaria'] = Sincroniza (
+    'portaria',                 # Nome
+    'LogAcessoClube',           # log_movto_portaria
+)
+sincronizador['portaria'].start()
+
+def main():
+    interface = Interface(sincronizador)
+
+if __name__ == "__main__":
+    logging.info('Início do processamento')
+
+    start_server(
+        main,
+        port=1972 if os.getenv('AMBIENTE_NSS') != 'PRODUCAO' else 1958,
+        debug=True,
+        static_dir='front/static'
+    )
+
+    logging.info('Fim do processamento')

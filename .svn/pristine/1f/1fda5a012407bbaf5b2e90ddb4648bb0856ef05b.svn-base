@@ -1,0 +1,47 @@
+#!/usr/bin/python
+#
+
+import os,logging
+from logging.handlers import RotatingFileHandler
+logging.basicConfig (
+   level = logging.INFO,
+   format = "%(asctime)s %(name)s:%(funcName)s %(levelname)s: %(message)s",
+   handlers = [
+      RotatingFileHandler(
+         filename = "/var/log/sincronismo.log" if os.getenv('AMBIENTE_NSS') == 'PRODUCAO' else "/tmp/sincronismo_teste.log",
+         encoding = "utf-8",
+         maxBytes = 0x500000,
+         backupCount = 3
+      )
+   ]
+)
+
+from pywebio import start_server
+from sincroniza import Sincroniza
+from interface import Interface
+
+sincronizador = Sincroniza(
+   'nacionalidade',
+   'associado',
+   'profissoes',
+   'tipo_acompanhante',
+   'tipo_documento',
+   'tipo_cota',
+   'tipo_concessao',
+   'tipo_contribuinte',
+   'uf',
+)
+sincronizador.start()
+
+sincronizador_dominios = Sincroniza(
+   'tipo_documento',
+)
+
+def main():
+   interface = Interface(sincronizador)
+
+if __name__ == "__main__":
+   logging.info('Início do processamento')
+
+   start_server(main, port=1972 if os.getenv('AMBIENTE_NSS') != 'PRODUCAO' else 1957, debug=True)
+   logging.info('Fim do processamento')

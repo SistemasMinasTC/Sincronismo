@@ -1,0 +1,81 @@
+#!/usr/bin/python
+#
+
+import os, time, logging
+
+from pywebio.input import *
+from pywebio.output import *
+from pywebio.pin import *
+from pywebio_battery import popup_input
+from pywebio.session import *
+
+class Interface:
+   def __init__(self,sincronizador):
+      self.STOP = True
+      self.Pause = False
+      self.sincronizador = sincronizador
+      self.create_widgets()
+
+   def create_widgets(self):
+      put_column([
+         put_row([put_scope('cabecalho')]),
+         put_row([
+            put_column([put_scope('menu')]),
+            None,
+            put_column([put_scope('form')])
+         ],size='30% 10px 65%')
+      ])
+
+      with use_scope('cabecalho') as cabecalho:
+         put_text('Sincronismo').style('color: white; font-size: 60px; background-color: blue;')
+
+      with use_scope('menu') as menu:
+         put_button('Monitora serviço', onclick=self.monitora)
+         put_button('Gera triggers', onclick=self.geraTriggers)
+         put_button('Gera código',onclick=None)
+
+   def monitora(self):
+      with use_scope('form') as form:
+         clear()
+         put_input(label = "Intervalo de atualização", name = 'interval', type = NUMBER, value = 5,position=0)
+         put_buttons(['Para','Reinicia'], onclick = self.start_stop)
+         put_text()
+         put_text('Mensagens:')
+         put_scrollable(put_scope('mensagens'), height=100, keep_bottom=True)
+
+   def geraTriggers(self):
+      with use_scope('form') as form:
+         clear()
+         put_input(label = "Tabela", name = 'tabela', type = TEXT, position=0)
+         put_input(label = "Chave primária (valores separados por vírgula)", name = 'chavePrimaria', type = TEXT)
+         put_button('Gera', onclick=self._geraTriggers_)
+
+   def _geraTriggers_(self):
+      try:
+         from cria_triggers import createTriggersInformix
+         createTriggersInformix(pin.tabela, pin.chavePrimaria.split(','))
+      except Exception as erro:
+         put_error(erro, closable=True)
+      else:
+         put_success('Triggers gerados', closable=True)
+
+
+   def start_stop(self, operacao):
+      if operacao == 'Para':
+         put_text('Pedido de parar', scope='mensagens')
+         self.sincronizador.stop()
+         put_text('Parado', scope='mensagens')
+
+      if operacao == 'Reinicia':
+         put_text('Pedido de reiniciar', scope='mensagens')
+         self.sincronizador.start()
+
+   def put_log(self, texto):
+      put_text(texto, scope='mensagens')
+
+
+# Teste
+#
+if __name__ == "__main__":
+   from sincroniza import Sincroniza
+   interface = Interface(Sincroniza())

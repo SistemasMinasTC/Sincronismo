@@ -1,0 +1,186 @@
+#!/usr/bin/python
+#
+
+import os, time, logging
+
+from pywebio.input import *
+from pywebio.output import *
+from pywebio.pin import *
+from pywebio_battery import popup_input
+from pywebio.session import *
+
+from cria_sincronismo_tabela import *
+
+class Interface:
+   def __init__(self,sincronizador):
+      self.STOP = True
+      self.Pause = False
+      self.sincronizador = sincronizador
+      self.create_widgets()
+
+   def create_widgets(self):
+      put_column([
+         put_row([
+            put_scope('menu').style('background-color: #004078; text-align: Center'),
+            None,
+            put_scope('form')
+         ],size=('20% 10px 80%'))
+      ],size='minmax(768px,1fr)')
+
+      with use_scope('menu') as menu:
+         put_text('Sincronismo').style('color: white; font-size: 20px; background-color:#30b2ef;')
+         put_button('Monitora serviço', onclick=self.monitora)
+         put_button('Gera triggers', onclick=self.geraTriggers)
+         put_button('Gera código',onclick=self.geraCodigoSincronismo)
+
+   def monitora(self):
+      with use_scope('form',clear=True) as form:
+         put_input(label = "Intervalo de atualização", name = 'interval', type = NUMBER, value = 5,position=0)
+         put_buttons(['Para','Reinicia'], onclick = self.start_stop)
+         put_text()
+         put_text('Mensagens:')
+         put_scrollable(put_scope('mensagens'), height=100, keep_bottom=True)
+
+   def geraTriggers(self):
+      with use_scope('form',clear=True) as form:
+         put_text('Criacação de triggers').style('text-align: center;font-weight: bold;')
+         put_html('<hr>')
+         put_select(label = "Banco de dados",name = 'banco',options=('Informix','MS-SQL'))
+         put_select(label = "Tabela", name = 'tabela', options=nomeTabelas(pin.banco))
+         put_select(label = "Chave primária", name = 'chavePrimaria', options=nomeColunas(pin.banco,f'select * from {pin.tabela}'),multiple=True)
+         put_button('Gera', onclick=self._geraTriggers_)
+
+      pin_on_change('tabela', lambda nomeTabela : pin_update('chavePrimaria',options=nomeColunas(pin.banco,f'select * from {nomeTabela}')))
+
+   def _geraTriggers_(self):
+      if pin.banco == 'Informix':
+         try:
+            from cria_triggers import createTriggersInformix
+            createTriggersInformix(pin.tabela, pin.chavePrimaria)
+         except Exception as erro:
+            put_error(erro, closable=True)
+         else:
+            put_success('Triggers gerados', closable=True)
+      else:
+         put_error('Em implementação',closable=True)
+
+   def geraCodigoSincronismo(self):
+      def getDados():
+         self.dictDePara = {}
+
+         dados = []
+         for coluna in nomeColunas(pin.banco,f'select * from {pin.tabelaDestino}'):
+            dados.append({
+               'Destino': coluna,
+               'Origem': None,
+               'Referenciada': None,
+            })
+
+         return dados
+
+      def getOrigem(rowid):
+         form = popup_input(
+            [
+               put_select(label = "Origem", name = 'colunaOrigem', options=[None,]+nomeColunas('MS-SQL' if pin.banco == 'Informix' else 'Informix',f'select * from {pin.tabelaOrigem}',ordenado=True)),
+               put_select(label = "Referenciada", name = 'tabelaReferenciada', options=[None,]+nomeTabelas(pin.banco)),
+            ],
+            title = 'Identifique a origem',
+            cancelable=True
+         )
+
+         if form:
+            if  form['colunaOrigem']:
+               self.dictDePara[rowid] = (form['colunaOrigem'],form['tabelaReferenciada'])
+               datatable_update('dePara',form['tabelaReferenciada'],rowid,'Referenciada')
+            else:
+               if rowid in self.dictDePara:
+                  del(self.dictDePara[rowid])
+
+            return pin.colunaOrigem
+         else:
+            return None
+
+      with use_scope('form',clear=True) as form:
+         put_text('Geração de script de sincronismo').style('text-align: center;font-weight: bold;')
+         put_html('<hr>')
+         put_row([
+            put_select(label = "Banco de dados destino",name = 'banco',options=('Informix','MS-SQL'), value='MS-SQL'),
+            None,
+            put_select(label = "Tabela destino", name = 'tabelaDestino', options=nomeTabelas(pin.banco)),
+         ],size='50% 10px 50%')
+
+         put_row([
+            put_select(label = "Chave primária", name = 'chavePrimariaDestino', options=nomeColunas(pin.banco,f'select * from {pin.tabelaDestino}'),multiple=True),
+            None,
+            put_radio(label = "Auto Incremento", name="autoIncremento",options=('Sim','Não'), value = 'Não'),
+         ],size='50% 10px 50%')
+
+         put_text('Tabela Origem')
+         put_row(
+            [
+               put_select( name = 'tabelaOrigem', options=(nomeTabelas('MS-SQL' if pin.banco == 'Informix' else 'Informix'))).style("width: 300px;"),
+               put_button('IncluirColuna', onclick=self._geraTriggers_)
+            ]
+         ),
+
+         put_select(label = "Chave primária", name = 'chavePrimariaOrigem', options=nomeColunas('MS-SQL' if pin.banco == 'Informix' else 'Informix',f'select * from {pin.tabelaOrigem}'),multiple=True)
+
+
+         put_datatable(
+            getDados(),
+            onselect=lambda rowid: datatable_update(
+              'dePara',
+              getOrigem(rowid),
+              rowid,
+              'Origem'
+            ),
+            id_field = 'Destino',
+            instance_id = 'dePara',
+            height = 'auto'
+         )
+
+         put_button('Gera', onclick=self._geraCodigoSincronismo_)
+
+      pin_on_change('banco', lambda nomeBanco : pin_update('tabelaDestino',options=nomeTabelas(nomeBanco)))
+      pin_on_change('banco', lambda nomeBanco : pin_update('tabelaOrigem',options=nomeTabelas('Informix' if nomeBanco=='MS-SQL' else 'MS-SQL')))
+      pin_on_change('tabelaDestino', lambda nomeTabela : datatable_update('dePara',getDados()))
+      pin_on_change('tabelaDestino', lambda nomeTabela : pin_update('chavePrimariaDestino',options=nomeColunas(pin.banco,f'select * from {nomeTabela}')))
+      pin_on_change('tabelaOrigem', lambda nomeTabela : pin_update('chavePrimariaOrigem',options=nomeColunas('Informix' if pin.banco=='MS-SQL' else 'MS-SQL',f'select * from {nomeTabela}')))
+
+   def _geraCodigoSincronismo_(self):
+      if pin.banco == 'MS-SQL':
+         try:
+            createSincronismoIfxSql(
+               pin.tabelaOrigem,
+               pin.chavePrimariaOrigem,
+               pin.tabelaDestino,
+               pin.chavePrimariaDestino,
+               pin.autoIncremento,
+               self.dictDePara,
+            )
+         except Exception as erro:
+            put_error(erro, closable=True)
+         else:
+            put_success('Código gerado', closable=True)
+      else:
+         put_error('Em implementação',closable=True)
+
+   def start_stop(self, operacao):
+      if operacao == 'Para':
+         put_text('Pedido de parar', scope='mensagens')
+         self.sincronizador.stop()
+         put_text('Parado', scope='mensagens')
+
+      if operacao == 'Reinicia':
+         put_text('Pedido de reiniciar', scope='mensagens')
+         self.sincronizador.start()
+
+   def put_log(self, texto):
+      put_text(texto, scope='mensagens')
+
+
+# Teste
+#
+if __name__ == "__main__":
+   from sincroniza import Sincroniza
+   interface = Interface(Sincroniza())

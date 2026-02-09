@@ -1,0 +1,150 @@
+#!/usr/bin/python
+#
+
+from biblioteca.conexoes import *
+
+def createTriggersInformix(banco: str, tabela: str, primaryKey: list):
+    ifx = conecta_informix(banco)
+
+    cr = ifx.cursor()
+
+    cr.execute(
+        """
+            create table if not exists mc_log (
+                id serial not null,
+                data_hora datetime year to fraction(3) not null,
+                tabela varchar(100) not null,
+                operacao char(3) not null,
+                pk varchar(100),
+                atualizacao datetime year to fraction(3),
+                status lvarchar(4096),
+                primary key (id)
+            );
+        """
+    )
+
+    cr.execute(
+        """
+            create procedure if not exists set_sincronismo()
+                define global idt_sincronizando boolean default "T";
+                let idt_sincronizando = "T";
+            end procedure;
+        """
+    )
+
+    cr.execute(
+        """
+            create function if not exists sincronizando() returning boolean
+                define global idt_sincronizando boolean default "F";
+                return idt_sincronizando;
+            end function;
+        """
+    )
+
+    cr.execute(
+        """
+            create procedure if not exists em_sincronismo()
+                define global idt_sincronizando boolean default "T";
+                let idt_sincronizando = "T";
+            end procedure;
+        """
+    )
+
+    cr.execute(f'drop trigger if exists mc_insert_{tabela}');
+
+    cr.execute(f"""
+        create trigger mc_insert_{tabela} insert on {tabela} referencing new as novo
+        for each row
+            when (not sincronizando())
+            (
+                insert into mc_log(data_hora,tabela,operacao,pk)
+                values
+                (
+                    current,
+                    '{tabela}',
+                    'ins',
+                    novo.{"||'|'||novo.".join(primaryKey)}
+                )
+            );
+    """)
+
+    cr.execute(f'drop trigger if exists mc_update_{tabela}');
+
+    cr.execute(f"""
+        create trigger mc_update_{tabela} update on {tabela} referencing new as novo
+        for each row
+            when (not sincronizando())
+            (
+                insert into mc_log(data_hora,tabela,operacao,pk)
+                values
+                (
+                    current,
+                    '{tabela}',
+                    'upd',
+                    novo.{"||'|'||novo.".join(primaryKey)}
+                )
+            );
+    """)
+
+    cr.execute(f'drop trigger if exists mc_delete_{tabela}');
+
+    cr.execute(f"""
+        create trigger mc_delete_{tabela} delete on {tabela} referencing old as velho
+        for each row
+            when (not sincronizando())
+            (
+                insert into mc_log(data_hora,tabela,operacao,pk)
+                values
+                (
+                    current,
+                    '{tabela}',
+                    'del',
+                    velho.{"||'|'||velho.".join(primaryKey)}
+                )
+            );
+    """)
+
+def createTriggersMssql(tabela: str, primaryKey):
+    sql = conecta_mssql()
+
+    cr = sql.cursor()
+
+    cr.execute(f"""
+        create or alter trigger mc_{tabela} on {tabela}
+        for insert, update, delete as
+            if object_id('tempdb..#sincronizando') is null
+                begin
+                    set nocount on;
+                    insert into mc_log(data_hora,tabela,operacao,pk)
+                    select
+                        getdate(),
+                        '{tabela}',
+                        'del',
+                        deleted.{primaryKey}
+                    from deleted
+                    where
+                        deleted.{primaryKey} not in (select inserted.{primaryKey} from inserted)
+                    union all
+                    select
+                        getdate(),
+                        '{tabela}',
+                        'ins',
+                        inserted.{primaryKey}
+                    from inserted;
+                end
+        """)
+
+    cr.execute(f"""
+        create or alter trigger UltimaAlteracao{tabela} on {tabela}
+            for update as
+                update {tabela} set UltimaAlteracao = getdate() where {primaryKey} in (select inserted.{primaryKey} from inserted)
+        """)
+
+# Teste
+#
+if __name__ == "__main__":
+    try:
+        createTriggersMssql('LogAcessoClube','IdMovimento')
+    except Exception as erro:
+        print(erro)
+

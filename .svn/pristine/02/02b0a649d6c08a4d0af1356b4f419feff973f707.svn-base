@@ -1,0 +1,209 @@
+#!/usr/bin/python
+#
+
+import time, threading, logging
+from importlib import import_module
+from recordtype import recordtype
+from datetime import datetime
+from conexoes import *
+from logging.handlers import RotatingFileHandler
+logging.basicConfig (
+   level = logging.INFO,
+   format = "%(asctime)s %(name)s:%(funcName)s %(levelname)s: %(message)s",
+   handlers = [
+      RotatingFileHandler(
+         filename = "/var/log/mc_log" if os.getenv('AMBIENTE_NSS') == 'PRODUCAO' else "/tmp/sincronismo_teste.log",
+         encoding = "utf-8",
+         maxBytes = 0x500000,
+         backupCount = 3
+      )
+   ]
+)
+
+class Sincroniza:
+   def __init__(self,*tabelas):
+      self.STOP = False
+      self.Pause = False
+
+      self.tabelas = {t:import_module(t) for t in tabelas}
+
+      self.conn_ifx = conecta_informix()
+      self.conn_sql = conecta_mssql()
+
+   def start(self):
+      self.STOP = False
+      self.Pause = False
+      self.sincronismo = threading.Thread(target=self.process, args=())
+      self.sincronismo.start()
+      print('sincronismo iniciado')
+
+   def stop(self):
+      self.STOP = True
+      self.sincronismo.join()
+      print('sincronismo interrompido')
+
+   def process(self):
+      while not self.STOP:
+         ifx = conecta_informix()
+         cr_ifx = ifx.cursor()
+
+         cr_ifx.execute(
+         """
+            create table if not exists mc_log (
+               id serial not null,
+               data_hora datetime year to fraction(3) not null,
+               tabela varchar(100) not null,
+               operacao char(3) not null,
+               pk varchar(100),
+               atualizacao datetime year to fraction(3),
+               status lvarchar(4096),
+               primary key (id)
+            );
+         """
+         )
+
+         cr_ifx.execute(
+         """
+            select
+               case dbinfo('DBNAME')
+                  when 'minas' then 'MTC'
+                  when 'nautico' then 'MTNC'
+                  else dbinfo('DBNAME')
+               end as cod_clube
+            from dual
+         """
+         )
+         cod_clube = cr_ifx.fetchone()[0]
+
+         cr_ifx_update = ifx.cursor()
+
+         sql = conecta_mssql()
+         cr_sql = sql.cursor()
+
+         try:
+            # cr_sql.execute(
+            """
+               create table mc_log (
+                  id integer identity (1,1),
+                  data_hora datetime not null,
+                  tabela varchar(100) not null,
+                  operacao char(3) not null,
+                  pk varchar(100),
+                  atualizacao datetime,
+                  status varchar(max),
+                  primary key (id)
+               );
+            """
+            )
+         except:
+            pass
+
+
+         # driver do sql só suporta um cursor ativo por vez
+         #
+         sql_update = conecta_mssql()
+         cr_sql_update = sql_update.cursor()
+
+         cr_ifx.execute("""
+            select
+               id,
+               data_hora,
+               tabela,
+               operacao,
+               pk
+            from mc_log
+            where
+               atualizacao is null
+            order by data_hora
+         """)
+         Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
+
+         cr_sql.execute(
+         """
+            select
+               id,
+               data_hora,
+               tabela,
+               operacao,
+               pk
+            from mc_log with (nolock)
+            where
+               atualizacao is null
+            order by data_hora
+         """
+         )
+
+         Fila = recordtype('Fila','conexao, cursor, cursor_update, linha')
+         filas = {}
+         filas['ifx']=Fila('ifx', cr_ifx, cr_ifx_update, None)
+         filas['sql']=Fila('sql', cr_sql, cr_sql_update, None)
+
+
+         # Faz as primeiras leituras
+         #
+         for key in filas:
+            f = filas[key]
+            f.linha = f.cursor.fetchone()
+            f.linha = Linha(*f.linha) if f.linha else None
+
+         # loop do merge
+         #
+         while True:
+            if self.STOP:
+               break
+
+            menor = Fila(None,None,None,None)
+
+            for key in filas:
+               f = filas[key]
+               if (f.linha.data_hora if f.linha else datetime.now()) < (menor.linha.data_hora if menor.linha else datetime.now()):
+                  menor = f
+
+            if not menor.linha:
+               break
+
+            if menor.linha.tabela in self.tabelas:
+               if menor.conexao == 'ifx':
+                  menor.linha.pk = f'{cod_clube}|{menor.linha.pk}'
+
+               print(menor.conexao,menor.linha)
+               mensagemErro = None
+               try:
+                  self.tabelas[menor.linha.tabela].convert(self.conn_ifx,self.conn_sql,menor.linha)
+               except Exception as erro:
+                  mensagemErro = erro.__str__()
+
+               logging.info(f'{menor.conexao} {menor.linha} - {mensagemErro if mensagemErro else "Ok"}')
+
+               if not mensagemErro:
+                  menor.cursor_update.execute(f'delete from mc_log where id = ?',(menor.linha.id,))
+               else:
+                  menor.cursor_update.execute(f"""
+                     update mc_log
+                     set
+                        atualizacao = {'current' if menor.conexao == 'ifx' else 'current_timestamp'},
+                        status = ?
+                     where id = ?
+                  """,(mensagemErro, menor.linha.id,))
+
+
+            menor.linha = menor.cursor.fetchone()
+            menor.linha = Linha(*menor.linha) if menor.linha else None
+
+            filas[menor.conexao] = menor
+            menor = Fila(None,None,None,None)
+
+         time.sleep(5)
+
+
+def main():
+   sincronizador = Sincroniza(
+      'uf',
+      'nacionalidade',
+      'profissoes',
+   )
+   sincronizador.process()
+
+if __name__ == "__main__":
+   logging.info('Início do sincronismo')
+   main()
