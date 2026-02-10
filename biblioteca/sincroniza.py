@@ -1,6 +1,5 @@
 #!/usr/bin/python
 #
-
 import time, threading, logging, heapq
 from importlib import import_module
 from recordtype import recordtype
@@ -28,7 +27,7 @@ class Sincroniza(object):
 
         self.nome = nome
         self.banco = 'minas'
-        self.tabelas = {tab: import_module(f'sincronismo.{tab}') for tab in tabelas}
+        self.tabelas = {tab: import_module(f'sincronismo.ifx.{tab}' if tab[0] == tab[0].lower() else f'sincronismo.sql.{tab}' ) for tab in tabelas}
 
     def start(self):
         self.STOP = False
