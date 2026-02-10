@@ -127,6 +127,7 @@ if __name__ == "__main__":
         from mc_log
         where
             tabela = 'agregado'
+        order by data_hora
     """)
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
 
