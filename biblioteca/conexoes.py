@@ -39,7 +39,10 @@ def conecta_mssql():
     else:
         ambiente =  os.getenv('AMBIENTE_NSS')
 
-    print(ambiente if ambiente in ('PRODUCAO','HOMOLOGACAO') else 'DESENVOLVIMENTO')
+    if not ambiente: 
+        ambiente = 'HOMOLOGACAO'
+    
+    print(ambiente if ambiente in ('PRODUCAO','DESENVOLVIMENTO') else 'HOMOLOGACAO')
 
     try:
         if ambiente == 'PRODUCAO':
