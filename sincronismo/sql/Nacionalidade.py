@@ -71,9 +71,9 @@ def convert(conn_ifx, conn_sql, linha_log):
                 nom_pais,
                 nom_nacionalidade
             ) values (
-                ? {cod_nacionalidade},
-                ? {nom_pais},
-                ? {nom_nacionalidade}
+                ? {{cod_nacionalidade}},
+                ? {{nom_pais}},
+                ? {{nom_nacionalidade}}
             )
         """,(
             origem.IdNacionalidade,
@@ -123,4 +123,5 @@ if __name__ == "__main__":
             print('ok')
         except Exception as erro:
             print(erro)
+
 

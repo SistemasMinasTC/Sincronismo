@@ -50,7 +50,7 @@ sincronizador['geral'] = Sincroniza (
     'cidadao',                  # Usuarios
     'curso',                    # Curso
     'dias_let_curso',           # Inclui a turma no mc_log
-    #'disp_entrada_saida',       # DipositivoAcesso
+    #'disp_entrada_saida',      # DipositivoAcesso
     'fatura',                   # Fatura
     'horario_pessoa',           # HorarioAcompanhante
     'item_fat_eterno',          # ItemFatura
@@ -64,7 +64,7 @@ sincronizador['geral'] = Sincroniza (
     'pessoa_fisica',            # Update em cota_associado
     'plano_cobranca',           # PlanoCobranca
     'plano_receita',            # ReceitaPlanoCobranca
-    #'portaria',                 # Portaria
+    #'portaria',                # Portaria
     'profissoes',               # Profissao
     'receita',                  # Receita
     'rec_nau_minas',            # EquivalenciaReceita
