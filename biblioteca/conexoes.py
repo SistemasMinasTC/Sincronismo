@@ -2,7 +2,9 @@
 # -*- coding:utf-8 -*-
 #
 
+from plistlib import UID
 import os, sys, pyodbc
+from dotenv import load_dotenv
 
 if os.name == 'nt' and hasattr(os, 'add_dll_directory'):
     informixdir = os.getenv('INFORMIXDIR', None)
@@ -18,9 +20,18 @@ def conecta_informix(banco='minas'):
     else:
         ambiente =  os.getenv('AMBIENTE_NSS')
 
+    load_dotenv(
+        "/usr/local/etc/CredenciaisMinasTenis/informix.env" 
+        if os.name == 'posix' 
+        else "C:\\CredenciaisMinasTenis\\informix.env"
+    )
+
+    UID = os.getenv("UID")
+    PWD = os.getenv("PWD")
+
     try:
-        ifx = IfxPyDbi.connect(f"SERVER=servlxcordes;DATABASE={banco};UID=informix;PWD=BDDlnx10;DB_LOCALE=en_us.1252") if ambiente != 'PRODUCAO' else \
-              IfxPyDbi.connect(f"SERVER=servlxcorpro;DATABASE={banco};UID=informix;PWD=BDDlnx10;DB_LOCALE=en_us.1252")
+        ifx = IfxPyDbi.connect(f"SERVER=servlxcordes;DATABASE={banco};UID={UID};PWD={PWD};DB_LOCALE=en_us.1252") if ambiente != 'PRODUCAO' else \
+              IfxPyDbi.connect(f"SERVER=servlxcorpro;DATABASE={banco};UID={UID};PWD={PWD};DB_LOCALE=en_us.1252")
     except:
         ifx = None
     else:
@@ -44,13 +55,30 @@ def conecta_mssql():
     
     print(ambiente if ambiente in ('PRODUCAO','DESENVOLVIMENTO') else 'HOMOLOGACAO')
 
+
+    if ambiente in ('PRODUCAO', 'HOMOLOGACAO'):
+        servidor = 'servwbdsqlsgc'
+    else:
+        servidor = 'servwsqldeserp'
+
+    if os.name == 'posix':
+        caminho = f"/usr/local/etc/CredenciaisMinasTenis/{servidor}.env"
+    else:
+        caminho = f"C:\\CredenciaisMinasTenis\\{servidor}.env"
+
+    load_dotenv(caminho, override=True)
+
+    UID = os.getenv("UID")
+    PWD = os.getenv("PWD")
+    
+
     try:
         if ambiente == 'PRODUCAO':
-            sql = pyodbc.connect(f"Driver={'FreeTDS' if os.name == 'posix' else 'SQL Server'};Server=servwbdsqlsgc;port=1433;uid=sa;pwd=@mil960@;database=MinasCorporativo",autocommit=True)
+            sql = pyodbc.connect(f"Driver={'FreeTDS' if os.name == 'posix' else 'SQL Server'};Server=servwbdsqlsgc;port=1433;uid={UID};pwd={PWD};database=MinasCorporativo",autocommit=True)
         elif ambiente == 'HOMOLOGACAO':
-            sql = pyodbc.connect(f"Driver={'FreeTDS' if os.name == 'posix' else 'SQL Server'};Server=servwbdsqlsgc;port=1433;uid=sa;pwd=@mil960@;database=MinasCorporativoHomolog",autocommit=True)
+            sql = pyodbc.connect(f"Driver={'FreeTDS' if os.name == 'posix' else 'SQL Server'};Server=servwbdsqlsgc;port=1433;uid={UID};pwd={PWD};database=MinasCorporativoHomolog",autocommit=True)
         else:
-            sql = pyodbc.connect(f"Driver={'FreeTDS' if os.name == 'posix' else 'SQL Server'};Server=servwsqldeserp;port=1433;uid=sa;pwd=@deti@20@;database=MinasCorporativo",autocommit=True)
+            sql = pyodbc.connect(f"Driver={'FreeTDS' if os.name == 'posix' else 'SQL Server'};Server=servwsqldeserp;port=1433;uid={UID};pwd={PWD};database=MinasCorporativo",autocommit=True)
 
     except:
         sql = None
