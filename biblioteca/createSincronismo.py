@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-from biblioteca.conexoes import *
+from conexoes import *
 from biblioteca.createSincronismoIfxSql import *
 from biblioteca.createSincronismoSqlIfx import *
 

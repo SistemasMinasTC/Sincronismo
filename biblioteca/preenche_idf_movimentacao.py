@@ -4,7 +4,6 @@
 
 import os, sys, pyodbc
 from recordtype import recordtype
-
 from conexoes import *
 
 #------------------------------------------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 #
 from pywebio.output import *
-from biblioteca.conexoes import *
+from conexoes import *
 def createSincronismoSqlIfx(tabelaIfx: str, primaryKeyIfx: list, tabelaSql: str, primaryKeySql: list, autoIncremento: bool, dePara: dict):
     if autoIncremento:
         projetaPkIfx = f""",

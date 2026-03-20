@@ -4,7 +4,7 @@ import time, threading, logging, heapq
 from importlib import import_module
 from recordtype import recordtype
 from datetime import datetime
-from biblioteca.conexoes import *
+from conexoes import *
 from copy import copy
 from logging.handlers import RotatingFileHandler
 logging.basicConfig (

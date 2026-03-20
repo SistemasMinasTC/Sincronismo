@@ -1,7 +1,7 @@
 #!/usr/bin/python
 #
 
-from biblioteca.conexoes import *
+from conexoes import *
 
 def createTriggersInformix(banco: str, tabela: str, primaryKey: list):
     ifx = conecta_informix(banco)

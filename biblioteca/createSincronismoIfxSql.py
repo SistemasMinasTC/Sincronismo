@@ -2,7 +2,7 @@
 #
 from pywebio.output import *
 
-from biblioteca.conexoes import *
+from conexoes import *
 from biblioteca.createSincronismoIfxSql import *
 from biblioteca.createSincronismoSqlIfx import *
 

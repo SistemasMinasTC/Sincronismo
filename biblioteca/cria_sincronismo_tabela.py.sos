@@ -2,7 +2,7 @@
 #
 from pywebio.output import *
 
-from biblioteca.conexoes import *
+from conexoes import *
 
 def nomeTabelas(banco):
     if banco == 'Informix':

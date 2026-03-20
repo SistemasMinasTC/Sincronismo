@@ -9,7 +9,7 @@ from pywebio.pin import *
 from pywebio_battery import popup_input
 from pywebio_battery import confirm
 from pywebio.session import *
-from biblioteca.conexoes import *
+from conexoes import *
 
 from recordtype import recordtype
 from biblioteca.createSincronismo import nomeTabelas, nomeColunas

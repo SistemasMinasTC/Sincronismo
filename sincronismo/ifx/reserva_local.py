@@ -288,7 +288,7 @@ where
 #
 if __name__ == "__main__":
     import sys
-    from biblioteca.conexoes import *
+    from conexoes import *
 
     ifx = conecta_informix('minas')
     if not ifx:

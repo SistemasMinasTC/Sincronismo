@@ -338,7 +338,7 @@ def convert(conn_ifx, conn_sql, linha_log):
 #
 if __name__ == "__main__":
     import sys
-    from biblioteca.conexoes import *
+    from conexoes import *
 
     ifx = conecta_informix('minas')
     if not ifx:
