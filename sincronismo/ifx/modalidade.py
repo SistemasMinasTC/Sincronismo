@@ -78,6 +78,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             IdReceitaAvulsa = (select PkSql from PkDePara where Tabela = 'Receita' and PkIfx = ?),
             TextoPontuacao = ?,
             TextoCriterios = ?,
+            CodigoModalidade = ?,
             UltimaAlteracao = getdate()
         where
             IdModalidadeEsportiva = (select PkSql from PkDePara where Tabela = 'ModalidadeEsportiva' and PkIfx = ?)
@@ -96,6 +97,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.cod_rec_avulsa,
             origem.txt_pontuacao,
             origem.txt_criterios,
+            chave.cod_mod_curso,
             linha_log.pk,
     ))
 
@@ -118,7 +120,8 @@ def convert(conn_ifx, conn_sql, linha_log):
                 PermiteIdadeMaior,
                 IdReceitaAvulsa,
                 TextoPontuacao,
-                TextoCriterios
+                TextoCriterios,
+                CodigoModalidade
             ) values (
                 ? /*IdClube*/,
                 ? /*Nome*/,
@@ -133,7 +136,8 @@ def convert(conn_ifx, conn_sql, linha_log):
                 ? /*PermiteIdadeMaior*/,
                 (select PkSql from PkDePara where Tabela = 'Receita' and PkIfx = ?) /*IdReceitaAvulsa*/,
                 ? /*TextoPontuacao*/,
-                ? /*TextoCriterios*/
+                ? /*TextoCriterios*/,
+                ? /*CodigoModalidade*/
             )
         """,(
             origem.cod_clube,
@@ -149,7 +153,8 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.idc_idade_acima,
             origem.cod_rec_avulsa,
             origem.txt_pontuacao,
-            origem.txt_criterios
+            origem.txt_criterios,
+            chave.cod_mod_curso
         ))
 
         cr_sql.execute("""select ident_current('ModalidadeEsportiva')""")

@@ -106,7 +106,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             PermiteMensalidadeProporcional = ?,
             CobraValorCancelamento = ?,
             TaxaEspecial = ?,
-            IdSubArea = (select PkSql from PkDePara where Tabela = 'SubArea' and PkIfx = ?),
+            IdSubArea = (select IdSubArea from SubArea where Nome = ?),
             IdUsuario = (select PkSql from PkDePara where Tabela = 'Usuario' and PkIfx = ?),
             UltimaAlteracao = getdate()
         where
@@ -174,7 +174,8 @@ def convert(conn_ifx, conn_sql, linha_log):
                 DataDesativacao,
                 PermiteLicencaMedica,
                 PermiteLicencaReserva,
-                PermiteMensalidadeProporcional,
+                PermiteMensalidadeProporcional,erro do peter
+
                 CobraValorCancelamento,
                 TaxaEspecial,
                 IdSubArea,
@@ -207,7 +208,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                 ? /*PermiteMensalidadeProporcional*/,
                 ? /*CobraValorCancelamento*/,
                 ? /*TaxaEspecial*/,
-                (select PkSql from PkDePara where Tabela = 'SubArea' and PkIfx = ?) /*IdSubArea*/,
+                (select PkSql from SubArea where Nome = ?) /*IdSubArea*/,
                 (select PkSql from PkDePara where Tabela = 'Usuario' and PkIfx = ?) /*IdUsuario*/
             )
         """,(

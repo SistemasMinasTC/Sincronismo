@@ -47,9 +47,9 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     if linha_log.operacao == 'del':
         if dados:
-            cr_ifx.execute("""
+            cr_ifx.execute(f"""
                 select nvl(max(dat_movto),today) as dat_exclusao
-                from movto_associado
+                from {linha_log.banco}:movto_associado
                 where
                     cod_movto in ('EXC','EXT','EXI','ECO','EXV') and
                     cod_associado = ? and

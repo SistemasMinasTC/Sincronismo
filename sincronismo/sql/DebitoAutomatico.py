@@ -1,7 +1,7 @@
 #!/usr/bin/python
 #
 
-import json
+import json, time
 from recordtype import recordtype
 
 def convert(conn_ifx, conn_sql, linha_log):
@@ -78,84 +78,100 @@ def convert(conn_ifx, conn_sql, linha_log):
     linha_log.banco = 'minas' if origem.IdClube == 'MTC' else 'nautico'
 
     cr_ifx.execute(f"""
-        update {linha_log.banco}:cota_debito_auto set
-            cod_banco = ?,
-            cod_agencia = ?,
-            nro_conta = ?,
-            dv_conta = ?,
-            cpf_titular_conta = ?,
-            dat_ini_autoriza = ?,
-            dat_cancelamento = ?,
-            cod_operacao = ?
+        select dat_ini_autoriza
+        from {linha_log.banco}:cota_debito_auto
         where
             cod_tipo_associado = ? and
             cod_cota = ?
     """,(
-            origem.IdBanco,
-            origem.CodigoAgencia,
-            origem.NumeroConta,
-            origem.DigitoConta,
-            origem.CPF,
-            origem.DataInicio,
-            origem.DataCancelamento,
-            origem.OperacaoConta,
-
             origem.TipoCota,
             origem.NumeroCota,
     ))
 
-    if cr_ifx.rowcount == 0:
+    linha = cr_ifx.fetchone()
+
+    dat_ini_autoriza = linha[0] if linha else time.strftime('%Y-%m-%d')
+
+    if str(origem.DataInicio) >= str(dat_ini_autoriza):
         cr_ifx.execute(f"""
-            insert into {linha_log.banco}:cota_debito_auto
-            (
-                cod_tipo_associado,
-                cod_cota,
-                cod_banco,
-                cod_agencia,
-                nro_conta,
-                dv_conta,
-                cpf_titular_conta,
-                dat_ini_autoriza,
-                dat_cancelamento,
-                cod_operacao
-            ) values (
-                ? {{cod_tipo_associado}},
-                ? {{cod_cota}},
-                ? {{cod_banco}},
-                ? {{cod_agencia}},
-                ? {{nro_conta}},
-                ? {{dv_conta}},
-                ? {{cpf_titular_conta}},
-                ? {{dat_ini_autoriza}},
-                ? {{dat_cancelamento}},
-                ? {{cod_operacao}}
-            )
+            update {linha_log.banco}:cota_debito_auto set
+                cod_banco = ?,
+                cod_agencia = ?,
+                nro_conta = ?,
+                dv_conta = ?,
+                cpf_titular_conta = ?,
+                dat_ini_autoriza = ?,
+                dat_cancelamento = ?,
+                cod_operacao = ?
+            where
+                cod_tipo_associado = ? and
+                cod_cota = ?
         """,(
-            origem.TipoCota,
-            origem.NumeroCota,
-            origem.IdBanco,
-            origem.CodigoAgencia,
-            origem.NumeroConta,
-            origem.DigitoConta,
-            origem.CPF,
-            origem.DataInicio,
-            origem.DataCancelamento,
-            origem.OperacaoConta
+                origem.IdBanco,
+                origem.CodigoAgencia,
+                origem.NumeroConta,
+                origem.DigitoConta,
+                origem.CPF,
+                origem.DataInicio,
+                origem.DataCancelamento,
+                origem.OperacaoConta,
+
+                origem.TipoCota,
+                origem.NumeroCota,
         ))
 
-    # acerta idc_deb_automatico na cota
-    #
-    cr_ifx.execute(f"""
-        update {linha_log.banco}:_cota_ set
-            idc_deb_automatico = ?
-        where
-            cod_tipo_associado = ? and
-            cod_cota = ?
-    """,(
-            'N' if origem.DataCancelamento else 'S',
-            origem.TipoCota,
-            origem.NumeroCota,
-    ))
+        if cr_ifx.rowcount == 0:
+            cr_ifx.execute(f"""
+                insert into {linha_log.banco}:cota_debito_auto
+                (
+                    cod_tipo_associado,
+                    cod_cota,
+                    cod_banco,
+                    cod_agencia,
+                    nro_conta,
+                    dv_conta,
+                    cpf_titular_conta,
+                    dat_ini_autoriza,
+                    dat_cancelamento,
+                    cod_operacao
+                ) values (
+                    ? {{cod_tipo_associado}},
+                    ? {{cod_cota}},
+                    ? {{cod_banco}},
+                    ? {{cod_agencia}},
+                    ? {{nro_conta}},
+                    ? {{dv_conta}},
+                    ? {{cpf_titular_conta}},
+                    ? {{dat_ini_autoriza}},
+                    ? {{dat_cancelamento}},
+                    ? {{cod_operacao}}
+                )
+            """,(
+                origem.TipoCota,
+                origem.NumeroCota,
+                origem.IdBanco,
+                origem.CodigoAgencia,
+                origem.NumeroConta,
+                origem.DigitoConta,
+                origem.CPF,
+                origem.DataInicio,
+                origem.DataCancelamento,
+                origem.OperacaoConta
+            ))
+
+        # acerta idc_deb_automatico na cota
+        #
+        cr_ifx.execute(f"""
+            update {linha_log.banco}:_cota_ set
+                idc_deb_automatico = ?
+            where
+                cod_tipo_associado = ? and
+                cod_cota = ?
+        """,(
+                'N' if origem.DataCancelamento else 'S',
+                origem.TipoCota,
+                origem.NumeroCota,
+        ))
 
     cr_ifx.close()
 
@@ -188,7 +204,7 @@ if __name__ == "__main__":
             excluido
         from mc_log
         where
-            tabela = 'DebitoAutomatico'
+            tabela = 'DebitoAutomatico' and tentativas = 3
     """)
 
     Linha = recordtype('Linha',[col[0] for col in cr_sql.description])

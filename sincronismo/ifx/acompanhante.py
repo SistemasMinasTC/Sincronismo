@@ -25,18 +25,10 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     if linha_log.operacao == 'del':
         cr_sql.execute(f"""
-            delete from Acompanhante
+            update Acompanhante
+            set DataPrevistaCancelamento = getdate()
             where
                 IdAcompanhante = (select PkSql from PkDePara where Tabela = 'Acompanhante' and PkIfx = ?)
-        """, (
-            linha_log.pk
-        ))
-
-        cr_sql.execute(f"""
-            delete from PkDePara
-            where
-                tabela = 'Acompanhante' and
-                PkSql = (select PkSql from PkDePara where Tabela = 'Acompanhante' and PkIfx = ?)
         """, (
             linha_log.pk
         ))

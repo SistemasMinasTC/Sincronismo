@@ -80,9 +80,6 @@ def convert(conn_ifx, conn_sql, linha_log):
             StatusCota = ?,
             DataEncerramento = ?,
             EmailCobranca = ?,
-            IdTipoIsencao = (select PkSql from PkDePara where Tabela = 'TipoIsencao' and PkIfx = ?),
-            DataInicioIsencao = ?,
-            DataFimIsencao = ?,
             UltimaAlteracao = getdate()
         where
             IdCota = (select PkSql from PkDePara where Tabela = 'Cota' and PkIfx = ?)
@@ -95,9 +92,6 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.idt_status,
             origem.dat_prev_encerra,
             origem.des_email,
-            origem.cod_tipo_isencao,
-            origem.dat_inicio_isencao,
-            origem.dat_fim_isencao,
             linha_log.pk,
     ))
 
@@ -114,10 +108,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                 DataCriacao,
                 StatusCota,
                 DataEncerramento,
-                EmailCobranca,
-                IdTipoIsencao,
-                DataInicioIsencao,
-                DataFimIsencao
+                EmailCobranca
             ) values (
                 ? /*IdClube*/,
                 ? /*TipoCota*/,
@@ -126,10 +117,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                 ? /*DataCriacao*/,
                 ? /*StatusCota*/,
                 ? /*DataEncerramento*/,
-                ? /*EmailCobranca*/,
-                (select PkSql from PkDePara where Tabela = 'TipoIsencao' and PkIfx = ?) /*IdTipoIsencao*/,
-                ? /*DataInicioIsencao*/,
-                ? /*DataFimIsencao*/
+                ? /*EmailCobranca*/
             )
         """,(
             origem.cod_clube,
@@ -140,9 +128,6 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.idt_status,
             origem.dat_prev_encerra,
             origem.des_email,
-            origem.cod_tipo_isencao,
-            origem.dat_inicio_isencao,
-            origem.dat_fim_isencao,
         ))
 
         cr_sql.execute("""select ident_current('Cota')""")

@@ -200,7 +200,9 @@ if __name__ == "__main__":
             pk
         from mc_log
         where
-            tabela = 'aluno'
+            tabela = 'aluno' and
+            tentativas = 3 and
+            pk matches '685946*'
         order by data_hora
     """)
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
