@@ -33,7 +33,7 @@ sincronizador['geral'] = Sincroniza (
     '_movimentacao_receita_',   # ReceitaCota
     'acerto_cancel_rec',        # ReceitaCota (update)
     'acerto_cancel',            # Acerto
-    'acompanhante',             # Acompanhante
+    #'acompanhante',             # Acompanhante
     'acomp_associado',          # AcompanhanteAssociado
     'agregado',                 # Adesao
     'aluno',                    # Aluno

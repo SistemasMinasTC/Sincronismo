@@ -208,7 +208,7 @@ if __name__ == "__main__":
             pk
         from mc_log
         where
-            tabela = 'acompanhante'
+            tabela = 'acompanhante' and pk = 907
     """)
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
 
