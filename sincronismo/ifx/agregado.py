@@ -3,8 +3,40 @@
 
 from recordtype import recordtype
 
+# 🔹 Função para buscar PK no de/para
+def get_pk(cr, tabela, pk_ifx):
+    row = cr.execute(
+        "SELECT PkSql FROM PkDePara WHERE Tabela=? AND PkIfx=?",
+        (tabela, pk_ifx)
+    ).fetchone()
+
+    # 🔥 IMPORTANTE: garantir retorno como INT (evita erro de tipo no pyodbc)
+    return int(row[0]) if row and row[0] is not None else None
+
+
+# 🔹 Função para normalizar tipos (ESSENCIAL para evitar HYC00)
+def normalize(val):
+    if val is None:
+        return None
+
+    # 🔥 bool → int
+    if isinstance(val, bool):
+        return 1 if val else 0
+
+    # 🔥 date/datetime → string (driver não gosta em alguns casos)
+    if hasattr(val, 'strftime'):
+        return val.strftime('%Y-%m-%d %H:%M:%S')
+
+    # 🔥 string numérica → int
+    if isinstance(val, str) and val.isdigit():
+        return int(val)
+
+    return val
+
+
 def convert(conn_ifx, conn_sql, linha_log):
     cr_sql = conn_sql.cursor()
+
     try:
         cr_sql.execute('create table #sincronizando (dummy char(1))')
     except:
@@ -18,90 +50,114 @@ def convert(conn_ifx, conn_sql, linha_log):
     elif linha_log.banco == 'nautico':
         cod_clube = 'MTNC'
 
-    linha_log.pk = cod_clube+'|'+linha_log.pk
+    linha_log.pk = cod_clube + '|' + linha_log.pk
 
     Chave = recordtype('Chave', 'cod_clube, nro_seq_agregado')
     chave = Chave(*linha_log.pk.split('|'))
 
+    
     if linha_log.operacao == 'del':
-        cr_sql.execute(f"""
-            delete from Adesao
-            where
-                IdAdesao = (select PkSql from PkDePara where Tabela = 'Adesao' and PkIfx = ?)
-        """, (
-            linha_log.pk
-        ))
+        id_adesao = get_pk(cr_sql, 'Adesao', linha_log.pk)
+
+        if id_adesao:
+            cr_sql.execute(
+                "DELETE FROM Adesao WHERE IdAdesao = ?",
+                (id_adesao,)
+            )
 
         cr_sql.close()
         return
 
-    cr_ifx.execute(f"""
+   
+    cr_ifx.execute("""
         select
-            '{cod_clube}|' || cod_tipo_associado ||'|'|| cod_cota as cod_cota,
-            dat_inicio,
-            idc_cobra_taxa = 'S' as idc_cobra_taxa,
-            dat_cancel
-        from {linha_log.banco}:agregado as agregado
+            'MTC|' || agregado.cod_tipo_associado ||'|'|| agregado.cod_cota as cod_cota,
+            agregado.dat_inicio,
+            agregado.idc_cobra_taxa = 'S' as idc_cobra_taxa,
+            agregado.dat_cancel,
+            'MTNC|CC|' || cod_agregado as cod_cota_agreg 
+        from Minas:agregado as agregado
+        inner join nautico:agreg_nautico nautico 
+            on nautico.cod_cota = agregado.cod_cota
         where
             nro_seq_agregado = ?
-    """,(
-        chave.nro_seq_agregado,
-    ))
+    """, (chave.nro_seq_agregado,))
 
-    Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
+    Linha = recordtype('Linha', [col[0] for col in cr_ifx.description])
     linha = cr_ifx.fetchone()
     origem = Linha(*linha) if linha else None
 
-    cr_sql.execute("""
-        update Adesao set
-            IdCota = (select PkSql from PkDePara where Tabela = 'Cota' and PkIfx = ?),
-            DataInicio = ?,
-            CobraTaxa = ?,
-            DataCancelamento = ?,
-            UltimaAlteracao = getdate()
-        where
-            IdAdesao = (select PkSql from PkDePara where Tabela = 'Adesao' and PkIfx = ?)
-    """,(
-            origem.cod_cota,
-            origem.dat_inicio,
-            origem.idc_cobra_taxa,
-            origem.dat_cancel,
-            linha_log.pk,
-    ))
+    if not origem:
+        cr_sql.close()
+        return
 
-    if cr_sql.rowcount == 0:
-        cr_sql.execute('begin transaction')
+    id_cota = get_pk(cr_sql, 'Cota', origem.cod_cota)
+    id_cota_adesao = get_pk(cr_sql, 'Cota', origem.cod_cota_agreg)
+    id_adesao = get_pk(cr_sql, 'Adesao', linha_log.pk)
 
-        cr_sql.execute(f"""
-            insert into Adesao
+    if id_cota is None:
+        print("Cota não encontrada:", origem.cod_cota)
+        cr_sql.close()
+        return
+
+    params_update = (
+        normalize(id_cota),
+        normalize(origem.dat_inicio),
+        normalize(origem.idc_cobra_taxa),
+        normalize(origem.dat_cancel),
+        normalize(id_cota_adesao),
+        normalize(id_adesao)
+    )
+
+    if id_adesao:
+        cr_sql.execute("""
+            UPDATE Adesao SET
+                IdCota = ?,
+                DataInicio = ?,
+                CobraTaxa = ?,
+                DataCancelamento = ?,
+                IdCotaAdesao = ?,
+                UltimaAlteracao = GETDATE()
+            WHERE IdAdesao = ?
+        """, params_update)
+
+
+    if not id_adesao:
+        cr_sql.execute('BEGIN TRANSACTION')
+
+        params_insert = (
+            normalize(id_cota),
+            normalize(origem.dat_inicio),
+            normalize(origem.idc_cobra_taxa),
+            normalize(origem.dat_cancel),
+            normalize(id_cota_adesao)
+        )
+
+        cr_sql.execute("""
+            INSERT INTO Adesao
             (
                 IdCota,
                 DataInicio,
                 CobraTaxa,
-                DataCancelamento
-            ) output inserted.IdAdesao  values (
-                (select PkSql from PkDePara where Tabela = 'Cota' and PkIfx = ?) /*Cota*/,
-                ? /*DataInicio*/,
-                ? /*CobraTaxa*/,
-                ? /*DataCancelamento*/
+                DataCancelamento,
+                IdCotaAdesao
             )
-        """,(
-            origem.cod_cota,
-            origem.dat_inicio,
-            origem.idc_cobra_taxa,
-            origem.dat_cancel
-        ))
+            OUTPUT INSERTED.IdAdesao
+            VALUES (?, ?, ?, ?, ?)
+        """, params_insert)
 
-        cr_sql.execute("""select ident_current('Adesao')""")
         pkSql = cr_sql.fetchval()
 
-        cr_sql.execute("insert into PkDePara values ('Adesao',?,?)",(pkSql, linha_log.pk,))
-        cr_sql.execute("commit transaction")
+        cr_sql.execute(
+            "INSERT INTO PkDePara VALUES ('Adesao', ?, ?)",
+            (pkSql, linha_log.pk)
+        )
+
+        cr_sql.execute('COMMIT TRANSACTION')
 
     cr_sql.close()
 
-# Teste
-#
+
 if __name__ == "__main__":
     import sys
     from conexoes import *
@@ -115,12 +171,14 @@ if __name__ == "__main__":
     if not sql:
         print('Banco mssql não disponível')
         sys.exit()
+
     cr_ifx = ifx.cursor()
 
     cr_ifx.execute("""
         select
             id,
             data_hora,
+            banco,
             tabela,
             operacao,
             pk
@@ -129,7 +187,8 @@ if __name__ == "__main__":
             tabela = 'agregado'
         order by data_hora
     """)
-    Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
+
+    Linha = recordtype('Linha', [col[0] for col in cr_ifx.description])
 
     for linha in [Linha(*l) for l in cr_ifx]:
         print(linha)
