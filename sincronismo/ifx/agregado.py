@@ -3,31 +3,30 @@
 
 from recordtype import recordtype
 
-# 🔹 Função para buscar PK no de/para
 def get_pk(cr, tabela, pk_ifx):
     row = cr.execute(
         "SELECT PkSql FROM PkDePara WHERE Tabela=? AND PkIfx=?",
         (tabela, pk_ifx)
     ).fetchone()
 
-    # 🔥 IMPORTANTE: garantir retorno como INT (evita erro de tipo no pyodbc)
+    #IMPORTANTE: garantir retorno como INT (evita erro de tipo no pyodbc)
     return int(row[0]) if row and row[0] is not None else None
 
 
-# 🔹 Função para normalizar tipos (ESSENCIAL para evitar HYC00)
+#Função para normalizar tipos (ESSENCIAL para evitar HYC00)
 def normalize(val):
     if val is None:
         return None
 
-    # 🔥 bool → int
+    # bool → int
     if isinstance(val, bool):
         return 1 if val else 0
 
-    # 🔥 date/datetime → string (driver não gosta em alguns casos)
+    # date/datetime → string
     if hasattr(val, 'strftime'):
         return val.strftime('%Y-%m-%d %H:%M:%S')
 
-    # 🔥 string numérica → int
+    # string numérica → int
     if isinstance(val, str) and val.isdigit():
         return int(val)
 
