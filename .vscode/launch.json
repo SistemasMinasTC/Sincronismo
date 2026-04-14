@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug aluno (venv310)",
+            "type": "python",
+            "request": "launch",
+
+            "module": "sincronismo.ifx.aluno",
+
+            "console": "integratedTerminal",
+            "justMyCode": false,
+
+            "python": "/mnt/c/Users/estagio.analise1/ScriptsPython/projetos/conexoesMtc/venv310/bin/python",
+
+            "env": {
+                "PYTHONPATH": "/mnt/c/Users/estagio.analise1/Sincronismo",
+                "LD_LIBRARY_PATH": "/opt/IBM/informix/lib:/opt/IBM/informix/lib/cli"
+            }
+        }
+    ]
+}
