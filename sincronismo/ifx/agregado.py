@@ -54,7 +54,7 @@ def convert(conn_ifx, conn_sql, linha_log):
     Chave = recordtype('Chave', 'cod_clube, nro_seq_agregado')
     chave = Chave(*linha_log.pk.split('|'))
 
-    
+
     if linha_log.operacao == 'del':
         id_adesao = get_pk(cr_sql, 'Adesao', linha_log.pk)
 
@@ -67,17 +67,18 @@ def convert(conn_ifx, conn_sql, linha_log):
         cr_sql.close()
         return
 
-   
+
     cr_ifx.execute("""
         select
             'MTC|' || agregado.cod_tipo_associado ||'|'|| agregado.cod_cota as cod_cota,
             agregado.dat_inicio,
             agregado.idc_cobra_taxa = 'S' as idc_cobra_taxa,
             agregado.dat_cancel,
-            'MTNC|CC|' || cod_agregado as cod_cota_agreg 
+            'MTNC|CC|' || cod_agregado as cod_cota_agreg
         from Minas:agregado as agregado
-        inner join nautico:agreg_nautico nautico 
-            on nautico.cod_cota = agregado.cod_cota
+        inner join nautico:agreg_nautico nautico on
+            nautico.cod_tipo_associado = agregado.cod_tipo_associado and
+            nautico.cod_cota = agregado.cod_cota
         where
             nro_seq_agregado = ?
     """, (chave.nro_seq_agregado,))

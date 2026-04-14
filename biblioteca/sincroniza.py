@@ -256,7 +256,7 @@ def main():
     'Fatura',                   # fatura
     'ItemFatura'                # item_fatura, item_fat_eterno, item_fat_receita
     )
-    sincronizador.process(0,3)
+    sincronizador.start()
 
 if __name__ == "__main__":
     logging.info('Início do sincronismo')

@@ -67,7 +67,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             fatura.vlr_pago,
             fatura.dat_registro_fatura,
             fatura.dat_envio_email,
-            fatura.dat_envio_sms_1,
+            # fatura.dat_envio_sms_1,
             fatura.dat_envio_sms_2,
             fatura.cod_barra,
             fatura.lin_digitavel,
