@@ -1,19 +1,9 @@
 #!/usr/bin/python
 #
 
-import sys
-print(sys.executable)
-import os
 from recordtype import recordtype
-from google.cloud import storage
-
-
 
 def convert(conn_ifx, conn_sql, linha_log):
-    credencial="/usr/local/etc/CredenciaisMinasTenis/CredencialGCP.json" if os.name == 'posix' else "C:\\CredenciaisMinasTenis\\CredencialGCP.json"
-    storage_client = storage.Client.from_service_account_json(credencial)
-    bucket = storage_client.bucket('minascorp')
-
     cr_sql = conn_sql.cursor()
     try:
         cr_sql.execute('create table #sincronizando (dummy char(1))')
@@ -66,8 +56,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             idt_status = 'I' as idt_status,
             dat_pagto_mla,
             dat_recebeu_uniforme,
-            dat_fim_day_use,
-            aluno.img_parq
+            dat_fim_day_use
         from {linha_log.banco}:aluno as aluno
         left join {linha_log.banco}:ped_transf as ped_transf on
             ped_transf.cod_associado = aluno.cod_associado and
@@ -113,9 +102,6 @@ def convert(conn_ifx, conn_sql, linha_log):
     linha = cr_sql.fetchone()
     dados = Linha(*linha) if linha else None
 
-    cr_sql.execute("""select PkSql from PkDePara where Tabela = 'Aluno' and PkIfx = ?""", (origem.pk_ifx,))
-    id_aluno = cr_sql.fetchval()
-
     if not dados:
         raise Exception('Associado não encontrado no MinasCorporativo')
 
@@ -131,7 +117,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             IdTurmaOriginal = (select PkSql from PkDePara where Tabela = 'Turma' and PkIfx = ?),
             UltimaAlteracao = getdate()
         where
-            IdAluno = ?
+            IdAluno = (select PkSql from PkDePara where Tabela = 'Aluno' and PkIfx = ?)
     """,(
             dados.IdAssociado,
             origem.cod_turma,
@@ -141,7 +127,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.dat_recebeu_uniforme,
             origem.dat_fim_day_use,
             origem.pk_ifx,
-            id_aluno,
+            linha_log.pk,
     ))
 
     if cr_sql.rowcount == 0:
@@ -181,19 +167,9 @@ def convert(conn_ifx, conn_sql, linha_log):
 
         cr_sql.execute("""select ident_current('Aluno')""")
         pkSql = cr_sql.fetchval()
-        id_aluno = pkSql
 
-        cr_sql.execute("insert into PkDePara values ('Aluno',?,?)",(pkSql, id_aluno,))
+        cr_sql.execute("insert into PkDePara values ('Aluno',?,?)",(pkSql, linha_log.pk,))
         cr_sql.execute("commit transaction")
-
-    # Upload da imagem direto para o GCS (sem salvar em disco)
-
-    if origem.img_parq:
-        blob = bucket.blob(f"ParqAluno/{id_aluno}.jpg")
-        blob.upload_from_string(
-            origem.img_parq,
-            content_type='image/jpeg'
-        )
 
     cr_sql.close()
 
