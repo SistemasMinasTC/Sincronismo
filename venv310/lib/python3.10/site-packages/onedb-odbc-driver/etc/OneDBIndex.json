@@ -1,0 +1,15 @@
+{
+    "Index Version" : 1,
+    "Product" : "HCL OneDB Software Bundle",
+    "Product Id" : "a547735b-d09b-4690-9961-3354d1c30810",
+    "Product Version" : "1.0.0.0",
+    "Company Name" : "HCL Technologies Ltd.",
+    "Copyright" : "Copyright 2017, 2020. HCL Technologies Ltd.",
+    "Products" : [
+        {
+        "Product Name" : "HCL OneDB Client SDK",
+        "Product Id" : "0c32a0e9-2b18-4b5a-86ab-36d0ff5cb008",
+        "Packages" : ["ONEDB-SRV-PACK", "ONEDB-GLS-PACK", "ONEDB-MSG-PACK", "ONEDB-DBACCESS-PACK"]
+        }
+    ]
+}

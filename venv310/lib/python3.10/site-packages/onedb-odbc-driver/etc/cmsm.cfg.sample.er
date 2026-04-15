@@ -1,0 +1,100 @@
+###########################################################################
+#
+#  HCL Technologies
+#  Licensed Material - Property of IBM and/or HCL
+#  Copyright IBM Corporation 2012, 2013
+#  (c) Copyright HCL Technologies Ltd. 2018.  All Rights Reserved.
+#
+# Example Connection Manager configuration file setting for an
+# Enterprise Replication replicate set.
+#
+# See also the sqlhosts.cmsm.sample.er file.
+###########################################################################
+
+###########################################################################
+# Illustration for the Configuration Examples
+###########################################################################
+#
+#                          g_north (group)
+#                          north1  (standalone)
+#                                 |
+#                                 |
+#                                 |
+#                                 |
+#    g_west (group)----------- Network ----------- g_east (group)
+#    west1  (primary)             |                east1  (standalone)
+#    west2  (HDR)                 |                          
+#    west3  (SDS)                 |
+#                                 |
+#                          g_south (group)
+#                          south1  (primary)
+#                          south2  (SDS)
+#                          south3  (RSS)
+#
+# These four Enterprise Replication nodes participate in the 
+# replicate set "erset1".
+###########################################################################
+
+###########################################################################
+# Global Configuration Parameters
+###########################################################################
+# NAME: The Connection Manager instance name.
+#--------------------------------------------------------------------------
+# LOGFILE: The filename and path of the instance log file.
+#--------------------------------------------------------------------------
+# SSL_LABEL: Label of certificate from SSL keystore.
+#--------------------------------------------------------------------------
+# MACRO: The name of a macro, followed by the macro definition.
+###########################################################################
+
+NAME		mySampleCM
+LOGFILE		${INFORMIXDIR}/tmp/cm1.log
+SSL_LABEL	my_ssl_label
+MACRO		EWGROUPS=(g_east,g_west)
+MACRO		NSGROUPS=(g_north,g_south)
+
+###########################################################################
+# Setting for a Replicate Set Connection Unit
+###########################################################################
+# REPLSET: Define a replicate set connection unit. The replicate set name
+#          must match the name used in the "cdr define replicateset"
+#          command.
+#--------------------------------------------------------------------------
+# INFORMIXSERVER: Specify ER servers to connect to during Connection
+#                 Manager initialization.
+#--------------------------------------------------------------------------
+# SLA: Specify the redirection policy for client requests. For example:
+#
+#      1) Route client requests to any server in the domain that participates
+#         in the replicate set.
+#
+#            SLA repl1_any DBSERVERS=ANY
+#
+#      2) Route client requests to the server with the lowest workload in
+#         either group g_north or group g_south.
+#
+#            SLA repl1_ns DBSERVERS=${NSGROUPS} POLICY=WORKLOAD
+#
+#      3) Route client requests, round-robin, to the servers in group
+#         g_north and group g_south.
+#
+#            SLA repl1_ns_rr DBSERVERS=${NSGROUPS}  POLICY=ROUNDROBIN
+#
+#         The ROUNDROBIN policy is incompatible with WORKLOAD, LATENCY,
+#         and FAILURE policies.
+#
+#      4) Route client requests to one of servers in group g_west or
+#         group g_east.
+#
+#            SLA repl1_ew DBSERVERS=${EWGROUPS}
+###########################################################################
+REPLSET erset1
+{
+  INFORMIXSERVER	g_west,g_south
+
+  SLA repl1_any	  DBSERVERS=ANY
+  SLA repl1_ns	  DBSERVERS=${NSGROUPS} POLICY=WORKLOAD
+  SLA repl1_ns_rr DBSERVERS=${NSGROUPS} POLICY=ROUNDROBIN
+  SLA repl1_ew	  DBSERVERS=${EWGROUPS}
+}
+

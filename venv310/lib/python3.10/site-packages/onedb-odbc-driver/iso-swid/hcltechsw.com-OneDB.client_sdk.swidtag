@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SoftwareIdentity
+	name="OneDB Client SDK"
+	tagId="hcltechsw.com-babb131f78fc4ec7875267282c2253d5-1.0.0.0"
+	version="1.0.0.0"
+	versionScheme="multipartnumeric"
+	xml:lang="en"
+	xmlns="http://standards.iso.org/iso/19770/-2/2015/schema.xsd"
+	xmlns:ds="http://www.w3.org/2000/09/xmldsig#"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://standards.iso.org/iso/19770/-2/2015-current/schema.xsd schema.xsd">
+    <Meta generator="HCL ISO SWID TAG 0.1"/>
+    <Meta persistentId="babb131f78fc4ec7875267282c2253d5"/>
+	<Meta componentonly="true"/>
+	<Meta product="OneDB Client SDK"/>
+	<Meta productFamily="OneDB"/>
+    <Entity name="HCL" regid="hcltechsw.com" role="licensor tagCreator softwareCreator"/>
+</SoftwareIdentity>

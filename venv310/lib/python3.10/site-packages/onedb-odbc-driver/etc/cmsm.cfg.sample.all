@@ -1,0 +1,286 @@
+###########################################################################
+#
+#  HCL Technologies
+#  Licensed Material - Property of IBM and/or HCL
+#  Copyright IBM Corporation 2012, 2013
+#  (c) Copyright HCL Technologies Ltd. 2018.  All Rights Reserved.
+#
+# Example Connection Manager configuration file settings for:
+#    - High-availability clusters
+#    - Enterprise Replication replicate set
+#    - Flexible Grids
+#
+# See also the sqlhosts.cmsm.sample.all file.
+###########################################################################
+
+###########################################################################
+# Illustration for the Configuration Examples
+###########################################################################
+#
+#                          g_north (group)
+#                          north1  (standalone)
+#                                 |
+#                                 |
+#                                 |
+#                                 |
+#    g_west (group)----------- Network ----------- g_east (group)
+#    west1  (primary)             |                east1  (standalone)
+#    west2  (HDR)                 |                          
+#    west3  (SDS)                 |
+#                                 |
+#                          g_south (group)
+#                          south1  (primary)
+#                          south2  (SDS)
+#                          south3  (RSS)
+#
+# These four Enterprise Replication nodes participate in the 
+# replicate set "erset1".
+#
+# Flexible Grid "mygrid" also includes the four nodes in the domain.
+###########################################################################
+
+###########################################################################
+# Global Configuration Parameters
+###########################################################################
+# NAME: The Connection Manager instance name.
+#--------------------------------------------------------------------------
+# LOGFILE: The filename and path of the instance log file.
+#--------------------------------------------------------------------------
+# SSL_LABEL: Label of certificate from SSL keystore.
+#--------------------------------------------------------------------------
+# MACRO: The name of a macro, followed by the macro definition.
+###########################################################################
+
+NAME		mySampleCM
+LOGFILE		${INFORMIXDIR}/tmp/cm1.log
+SSL_LABEL	my_ssl_label
+MACRO		EWGROUPS=(g_east,g_west)
+MACRO		NSGROUPS=(g_north,g_south)
+
+###########################################################################
+# Settings for a High-Availability Cluster Connection Unit
+###########################################################################
+# CLUSTER: Define a cluster connection unit.
+#--------------------------------------------------------------------------
+# INFORMIXSERVER: Specify servers to connect to during Connection Manager
+#                 initialization.
+#--------------------------------------------------------------------------
+# SLA: Specifies the redirection policy for client requests. For example:
+#
+#       1) Route client requests to the primary server only.
+#
+#          SLA oltp_w   DBSERVERS=primary
+#
+#       2) Route DRDA client requests to the primary server only.
+#
+#          SLA oltpdr_w DBSERVERS=primary 
+#
+#       3) Route client requests to the HDR or SDS server with the lowest
+#          workload.
+#
+#          SLA report_w DBSERVERS=(HDR,SDS)
+#
+#       4) Route client requests to the HDR or SDS server in round-robin fashion.
+#
+#          SLA report_rr_w DBSERVERS=(HDR,SDS) POLICY=ROUNDROBIN
+#
+#          The ROUNDROBIN policy can be used with the following definitions:
+#            - CLUSTER
+#            - GRID
+#            - REPLSET
+#            - SERVERSET
+#
+#       5) Route client requests to the RSS server whose last applied logical-log
+#          page is not more than 5,500 pages behind the primary server's 
+#          current logical log position and who has the lowest workload.
+#
+#          SLA current_rss_w DBSERVERS=RSS \
+#              POLICY=SECAPPLYBACKLOG:5500+WORKLOAD
+#
+#          SECAPPLYBACKLOG is supported only in CLUSTER connection units.
+#
+#       6) Same configuration as example 5, but route client requests
+#          round-robin, rather than based on workload.
+#
+#          SLA current_rss_rr_w DBSERVERS=RSS \
+#              POLICY=SECAPPLYBACKLOG:5500+ROUNDROBIN
+#
+#--------------------------------------------------------------------------
+# FOC: Specify failover configuration.
+#      --------------------------------------------------------------------
+#      ORDER: Specify the server that receives failover if the primary
+#      server fails. This setting is deprecated. Use the server's
+#      HA_FOC_ORDER configuration parameter, instead.
+#      --------------------------------------------------------------------
+#      PRIORITY: Specify Connection Managers' priority for arbitrating
+#      failover. The Connection Manager with the lowest PRIORITY
+#      value is the active arbitrator.
+#--------------------------------------------------------------------------
+# CMALARMPROGRAM: Specify the path and filename of a program or script
+#                 that runs if an error occurs during failover.
+###########################################################################
+
+CLUSTER	g_west 
+{
+  INFORMIXSERVER	west1,west2	
+
+  SLA oltp_w 	       DBSERVERS=primary 
+  SLA oltpdr_w         DBSERVERS=primary
+  SLA report_w 	       DBSERVERS=(HDR,SDS)
+  SLA report_rr_w      DBSERVERS=(HDR,SDS) POLICY=ROUNDROBIN
+  SLA current_rss_w    DBSERVERS=RSS POLICY=SECAPPLYBACKLOG:5500+WORKLOAD
+  SLA current_rss_rr_w DBSERVERS=RSS POLICY=SECAPPLYBACKLOG:5500+ROUNDROBIN
+
+  FOC ORDER=SDS,HDR PRIORITY=1
+  CMALARMPROGRAM ${INFORMIXDIR}/etc/cmalarmprogram.sh
+}
+
+###########################################################################
+# Settings for a High-Availability Cluster Connection Unit
+###########################################################################
+# CLUSTER: Start the definition of a cluster connection unit.
+#--------------------------------------------------------------------------
+# INFORMIXSERVER: Specify servers to connect to during Connection Manager
+#                 initialization.
+#--------------------------------------------------------------------------
+# SLA: Specify the redirection policy for client requests. For example:
+#
+#      1) Route client requests to the primary server only
+#
+#            SLA oltp_s DBSERVERS=primary
+#
+#      2) Route DRDA client requests to the primary DRDA DBSERVERALIASES only
+#
+#            SLA oltpdr_s DBSERVERS=primary
+#
+#      3) Proxy client requests to any SDS server. If no SDS server is available,
+#         then re-route a client to any RSS server.  In proxy mode the client
+#         communicates only with the CM, and the CM communicates with the server
+#         on behalf of the client.
+#
+#            SLA report_s DBSERVERS=SDS,RSS MODE=proxy
+#
+#         PROXY mode works with CSDK 2.XX and later clients.
+###########################################################################
+
+CLUSTER g_south
+{
+  INFORMIXSERVER	south1,south2
+
+  SLA oltp_s	DBSERVERS=primary
+  SLA oltpdr_s	DBSERVERS=primary
+  SLA report_s	DBSERVERS=SDS,RSS MODE=proxy
+
+  FOC ORDER=SDS,RSS PRIORITY=1
+  CMALARMPROGRAM ${INFORMIXDIR}/etc/cmalarmprogram.sh
+}
+
+###########################################################################
+# Setting for a Replicate Set Connection Unit
+###########################################################################
+# REPLSET: Define a replicate set connection unit. The replicate set name
+#          must match the name used in the "cdr define replicateset"
+#          command.
+#--------------------------------------------------------------------------
+# INFORMIXSERVER: Specify ER servers to connect to during Connection
+#                 Manager initialization.
+#--------------------------------------------------------------------------
+# SLA: Specify the redirection policy for client requests. For example:
+#
+#      1) Route client requests to any server in the domain that participates
+#         in the replicate set.
+#
+#            SLA repl1_any DBSERVERS=ANY
+#
+#      2) Route client requests to the server with the lowest workload in
+#         either group g_north or group g_south.
+#
+#            SLA repl1_ns DBSERVERS=${NSGROUPS} POLICY=WORKLOAD
+#
+#      3) Route client requests, round-robin, to the servers in group
+#         g_north and group g_south.
+#
+#            SLA repl1_ns_rr DBSERVERS=${NSGROUPS}  POLICY=ROUNDROBIN
+#
+#         The ROUNDROBIN policy is incompatible with WORKLOAD, LATENCY,
+#         and FAILURE policies.
+#
+#      4) Route client requests to one of servers in group g_west or
+#         group g_east.
+#
+#            SLA repl1_ew DBSERVERS=${EWGROUPS}
+###########################################################################
+REPLSET erset1
+{
+  INFORMIXSERVER	g_west,g_south
+
+  SLA repl1_any	  DBSERVERS=ANY
+  SLA repl1_ns	  DBSERVERS=${NSGROUPS} POLICY=WORKLOAD
+  SLA repl1_ns_rr DBSERVERS=${NSGROUPS} POLICY=ROUNDROBIN
+  SLA repl1_ew	  DBSERVERS=${EWGROUPS}
+}
+
+###########################################################################
+# Settings for a Flexible Grid Connection Unit
+###########################################################################
+# GRID: Define a Flexible Grid connection unit.  The grid name must match
+#       the name used in the "cdr define grid" command.
+#--------------------------------------------------------------------------
+# INFORMIXSERVER: Specify servers to connect to during Connection Manager
+#                 initialization.
+#--------------------------------------------------------------------------
+# SLA: Specify the redirection policy for client requests. For example:
+#
+#      1) Route client requests to the server with the lowest latency
+#         in the grid.
+#
+#            SLA grid1_any DBSERVERS=ANY POLICY=LATENCY
+#
+#      2) Route client requests to servers in group g_west or group g_east.
+#         If both groups are unavailable, route client requests to servers
+#         in group g_north or group g_south.
+#
+#         SLA grid1_avail DBSERVERS=${EWGROUPS},${NSGROUPS}
+#
+###########################################################################
+
+GRID mygrid
+{
+  INFORMIXSERVER	g_west,g_south
+
+  SLA grid1_any		DBSERVERS=ANY POLICY=LATENCY
+  SLA grid1_avail	DBSERVERS=${EWGROUPS},${NSGROUPS}
+}
+
+###########################################################################
+# Settings for a ServerSet Connection Unit
+###########################################################################
+# SERVERSET: Define a SERVERSET connection unit.
+#--------------------------------------------------------------------------
+# INFORMIXSERVER: Specify servers to connect to during Connection Manager
+#                 initialization.
+#--------------------------------------------------------------------------
+# SLA: Specify the redirection policy for client requests. For example:
+#
+#      1) Route client requests to server west1. If server west1 is not
+#         available, route client requests to server east1. If server east1
+#         is not available, route client requests to server north1. The
+#         Connection Manager uses onsoctcp protocol, and listens to
+#         port 9990 on apollo11.
+#
+#            SLA ss_avail DBSERVERS=west1,east1,north1 \
+#                HOST=apollo11 SERVICE=9990 NETTYPE=onsoctcp
+#
+#      2) Route client requests to the server with the lowest workload in
+#         the serverset.
+#
+#            SLA ss_any DBSERVERS=(west1,east1,north1)
+#
+###########################################################################
+SERVERSET ss
+{
+  INFORMIXSERVER	west1,east1,north1
+  SLA ss_avail 	DBSERVERS=west1,east1,north1 \
+		HOST=apollo11 SERVICE=9990 NETTYPE=onsoctcp
+  SLA ss_any	DBSERVERS=(west1,east1,north1) 
+}
