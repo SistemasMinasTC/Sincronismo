@@ -1,9 +1,16 @@
 #!/usr/bin/python
 #
 
+import os
+import sys
 from recordtype import recordtype
+from google.cloud import storage
 
 def convert(conn_ifx, conn_sql, linha_log):
+    credencial="/usr/local/etc/CredenciaisMinasTenis/CredencialGCP.json" if os.name == 'posix' else "C:\\CredenciaisMinasTenis\\CredencialGCP.json"
+    storage_client = storage.Client.from_service_account_json(credencial)
+    bucket = storage_client.bucket('minascorp')
+
     cr_sql = conn_sql.cursor()
     try:
         cr_sql.execute('create table #sincronizando (dummy char(1))')
@@ -35,7 +42,8 @@ def convert(conn_ifx, conn_sql, linha_log):
             dat_atestado,
             dat_inclusao,
             mla_validador,
-            dat_validacao
+            dat_validacao,
+            img_atestado
         from {linha_log.banco}:associado_atestado as associado_atestado
         where
             nro_seq_ateass = ?
@@ -46,6 +54,9 @@ def convert(conn_ifx, conn_sql, linha_log):
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
     linha = cr_ifx.fetchone()
     origem = Linha(*linha) if linha else None
+
+    cr_sql.execute("""select PkSql from PkDePara where Tabela = 'PessoaAtestadoMedico' and PkIfx = ?""", (linha_log.pk,))
+    IdPessoaAtestadoMedico = cr_sql.fetchval()
 
     cr_sql.execute("""
         update PessoaAtestadoMedico set
@@ -99,9 +110,19 @@ def convert(conn_ifx, conn_sql, linha_log):
 
         cr_sql.execute("""select ident_current('PessoaAtestadoMedico')""")
         pkSql = cr_sql.fetchval()
+        IdPessoaAtestadoMedico = pkSql
 
         cr_sql.execute("insert into PkDePara values ('PessoaAtestadoMedico',?,?)",(pkSql, linha_log.pk,))
         cr_sql.execute("commit transaction")
+
+    # Upload da imagem direto para o GCS (sem salvar em disco)
+
+    if origem.img_atestado:
+        blob = bucket.blob(f"PessoaAtestadoMedico/{IdPessoaAtestadoMedico}.jpg")
+        blob.upload_from_string(
+            origem.img_atestado,
+            content_type='image/jpeg'
+        )
 
     cr_sql.close()
 
