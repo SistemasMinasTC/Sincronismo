@@ -98,7 +98,7 @@ sincronizador['geral'].start()
 
 sincronizador['portaria'] = Sincroniza (
     'portaria',                 # Nome
-    'LogAcesso',                # log_movto_portaria/log_movto_local
+    #'LogAcesso',                # log_movto_portaria/log_movto_local
 )
 sincronizador['portaria'].start()
 
