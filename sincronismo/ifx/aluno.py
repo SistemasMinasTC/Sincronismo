@@ -39,11 +39,11 @@ def convert(conn_ifx, conn_sql, linha_log):
                 select Aluno.IdAluno
                 from Aluno
                 inner join Associado on Associado.IdAssociado = Aluno.IdAssociado
-                inner join Turma     on Turma.IdTurma         = Aluno.IdTurma
-                inner join Curso     on Curso.IdCurso         = Turma.IdCurso
+                inner join Turma on Turma.IdTurma         = Aluno.IdTurma
+                inner join Curso on Curso.IdCurso         = Turma.IdCurso
                 where
-                    Curso.IdClube     = ? and
-                    Associado.NPF     = ? and
+                    Curso.IdClube = ? and
+                    Associado.NPF = ? and
                     Curso.CodigoCurso = ? and
                     Turma.CodigoTurma = ?
             )
@@ -63,8 +63,8 @@ def convert(conn_ifx, conn_sql, linha_log):
             aluno.cod_associado,
             aluno.cod_tipo_associado,
             aluno.cod_cota,
-            nvl(ped_transf.cod_curso_transf, aluno.cod_curso) as cod_turma_curso,
-            nvl(ped_transf.cod_turma_transf, aluno.cod_turma) as cod_turma_turma,
+            nvl(ped_transf.cod_curso_transf, aluno.cod_curso) as cod_curso,
+            nvl(ped_transf.cod_turma_transf, aluno.cod_turma) as cod_turma,
             aluno.cod_curso as cod_curso_original,
             aluno.cod_turma as cod_turma_original,
             dat_matricula,
@@ -72,17 +72,16 @@ def convert(conn_ifx, conn_sql, linha_log):
             dat_pagto_mla,
             dat_recebeu_uniforme,
             dat_fim_day_use,
-            dat_cancelamento,
             aluno.img_parq
         from {linha_log.banco}:aluno as aluno
         left join {linha_log.banco}:ped_transf as ped_transf on
             ped_transf.cod_associado = aluno.cod_associado and
-            ped_transf.cod_curso     = aluno.cod_curso     and
-            ped_transf.cod_turma     = aluno.cod_turma
+            ped_transf.cod_curso = aluno.cod_curso     and
+            ped_transf.cod_turma = aluno.cod_turma
         where
             aluno.cod_associado = ? and
-            aluno.cod_curso     = ? and
-            aluno.cod_turma     = ?
+            aluno.cod_curso = ? and
+            aluno.cod_turma = ?
     """, (
         chave.cod_associado,
         chave.cod_curso,
@@ -102,9 +101,9 @@ def convert(conn_ifx, conn_sql, linha_log):
         from Associado
         inner join Cota on Cota.IdCota = Associado.IdCota
         where
-            Cota.IdClube    = ? and
-            Associado.NPF   = ? and
-            Cota.TipoCota   = ? and
+            Cota.IdClube = ? and
+            Associado.NPF = ? and
+            Cota.TipoCota = ? and
             Cota.NumeroCota = ?
         order by Associado.DataAdmissao desc
     """, (
@@ -123,58 +122,53 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     cr_sql.execute("""
         update Aluno set
-            IdAssociado             = ?,
-            IdTurma                 = (
+            IdAssociado = ?,
+            IdTurma = (
                 select Turma.IdTurma
                 from Turma
                 inner join Curso on Curso.IdCurso = Turma.IdCurso
                 where
-                    Curso.IdClube     = ? and
+                    Curso.IdClube = ? and
                     Curso.CodigoCurso = ? and
                     Turma.CodigoTurma = ?
             ),
-            DataMatricula           = ?,
-            Isento                  = ?,
-            DataPagamentoMatricula  = ?,
+            DataMatricula = ?,
+            Isento = ?,
+            DataPagamentoMatricula = ?,
             DataRecebimentoUniforme = ?,
-            DataFimDayUse           = ?,
-            DataCancelamento        = ?,
-            IdTurmaOriginal         = (
+            DataFimDayUse = ?,
+            IdTurmaOriginal = (
                 select Turma.IdTurma
                 from Turma
                 inner join Curso on Curso.IdCurso = Turma.IdCurso
                 where
-                    Curso.IdClube     = ? and
+                    Curso.IdClube = ? and
                     Curso.CodigoCurso = ? and
                     Turma.CodigoTurma = ?
             ),
-            UltimaAlteracao         = getdate()
+            UltimaAlteracao = getdate()
         where IdAluno = (
             select Aluno.IdAluno
             from Aluno
             inner join Associado on Associado.IdAssociado = Aluno.IdAssociado
-            inner join Turma     on Turma.IdTurma         = Aluno.IdTurma
-            inner join Curso     on Curso.IdCurso         = Turma.IdCurso
+            inner join Turma on Turma.IdTurma = Aluno.IdTurma
+            inner join Curso on Curso.IdCurso = Turma.IdCurso
             where
-                Curso.IdClube     = ? and
-                Associado.NPF     = ? and
+                Curso.IdClube = ? and
+                Associado.NPF = ? and
                 Curso.CodigoCurso = ? and
                 Turma.CodigoTurma = ?
         )
     """, (
         dados.IdAssociado,
-        # IdTurma
-        origem.cod_clube, origem.cod_turma_curso, origem.cod_turma_turma,
+        origem.cod_clube, origem.cod_curso, origem.cod_turma, # IdTurma
         origem.dat_matricula,
         origem.isento,
         origem.dat_pagto_mla,
         origem.dat_recebeu_uniforme,
         origem.dat_fim_day_use,
-        origem.dat_cancelamento,
-        # IdTurmaOriginal
-        origem.cod_clube, origem.cod_curso_original, origem.cod_turma_original,
-        # where IdAluno
-        chave.cod_clube, chave.cod_associado, chave.cod_curso, chave.cod_turma,
+        origem.cod_clube, origem.cod_curso_original, origem.cod_turma_original, # IdTurmaOriginal
+        chave.cod_clube, chave.cod_associado, chave.cod_curso, chave.cod_turma, # where IdAluno
     ))
 
     if cr_sql.rowcount == 0:
@@ -190,7 +184,6 @@ def convert(conn_ifx, conn_sql, linha_log):
                 DataPagamentoMatricula,
                 DataRecebimentoUniforme,
                 DataFimDayUse,
-                DataCancelamento,
                 IdTurmaOriginal
             ) values (
                 ?,
@@ -199,33 +192,30 @@ def convert(conn_ifx, conn_sql, linha_log):
                     from Turma
                     inner join Curso on Curso.IdCurso = Turma.IdCurso
                     where
-                        Curso.IdClube     = ? and
+                        Curso.IdClube = ? and
                         Curso.CodigoCurso = ? and
                         Turma.CodigoTurma = ?
                 ),
-                ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, 
                 (
                     select Turma.IdTurma
                     from Turma
                     inner join Curso on Curso.IdCurso = Turma.IdCurso
                     where
-                        Curso.IdClube     = ? and
+                        Curso.IdClube = ? and
                         Curso.CodigoCurso = ? and
                         Turma.CodigoTurma = ?
                 )
             )
         """, (
             dados.IdAssociado,
-            # IdTurma
-            origem.cod_clube, origem.cod_turma_curso, origem.cod_turma_turma,
+            origem.cod_clube, origem.cod_curso, origem.cod_turma, # IdTurma
             origem.dat_matricula,
             origem.isento,
             origem.dat_pagto_mla,
             origem.dat_recebeu_uniforme,
             origem.dat_fim_day_use,
-            origem.dat_cancelamento,
-            # IdTurmaOriginal
-            origem.cod_clube, origem.cod_curso_original, origem.cod_turma_original,
+            origem.cod_clube, origem.cod_curso_original, origem.cod_turma_original, # IdTurmaOriginal
         ))
 
         cr_sql.execute("select ident_current('Aluno')")
@@ -237,11 +227,11 @@ def convert(conn_ifx, conn_sql, linha_log):
             select Aluno.IdAluno
             from Aluno
             inner join Associado on Associado.IdAssociado = Aluno.IdAssociado
-            inner join Turma     on Turma.IdTurma         = Aluno.IdTurma
-            inner join Curso     on Curso.IdCurso         = Turma.IdCurso
+            inner join Turma on Turma.IdTurma = Aluno.IdTurma
+            inner join Curso on Curso.IdCurso = Turma.IdCurso
             where
-                Curso.IdClube     = ? and
-                Associado.NPF     = ? and
+                Curso.IdClube = ? and
+                Associado.NPF = ? and
                 Curso.CodigoCurso = ? and
                 Turma.CodigoTurma = ?
         """, (
@@ -272,7 +262,7 @@ if __name__ == "__main__":
     if not ifx:
         print('Banco informix não disponível')
         sys.exit()
-
+        
     sql = conecta_mssql()
     if not sql:
         print('Banco mssql não disponível')
