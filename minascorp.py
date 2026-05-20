@@ -34,7 +34,7 @@ sincronizador['geral'] = Sincroniza (
     'acerto_cancel_rec',        # ReceitaCota (update)
     'acerto_cancel',            # Acerto
     #'acompanhante',             # Acompanhante
-    'acomp_associado',          # AcompanhanteAssociado
+    #'acomp_associado',          # AcompanhanteAssociado
     #'agregado',                 # Adesao
     'aluno',                    # Aluno
     'aluno_licenca',            # LicencaMedica
@@ -98,7 +98,7 @@ sincronizador['geral'].start()
 
 sincronizador['portaria'] = Sincroniza (
     'portaria',                 # Nome
-    'LogAcesso',                # log_movto_portaria/log_movto_local
+    #'LogAcesso',                # log_movto_portaria/log_movto_local
 )
 sincronizador['portaria'].start()
 
