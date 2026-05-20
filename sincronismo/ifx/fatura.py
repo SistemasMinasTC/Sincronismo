@@ -67,7 +67,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             fatura.vlr_pago,
             fatura.dat_registro_fatura,
             fatura.dat_envio_email,
-            # fatura.dat_envio_sms_1,
+            fatura.dat_envio_sms_1,
             fatura.dat_envio_sms_2,
             fatura.cod_barra,
             fatura.lin_digitavel,
@@ -77,6 +77,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             (select response::json::lvarchar(4096) from {linha_log.banco}:log_santander as log_santander where idf_log = (select max(idf_log) from {linha_log.banco}:log_santander as ultimo where ultimo.nom_operacao = 'registro' and ultimo.nro_fatura = fatura.nro_fatura)) as bankslip,
             (select response::json::lvarchar(4096) from {linha_log.banco}:log_santander as log_santander where idf_log = (select max(idf_log) from {linha_log.banco}:log_santander as ultimo where ultimo.nom_operacao <> 'registro' and ultimo.nro_fatura = fatura.nro_fatura)) as settlement,
             (select webhook::json::lvarchar(4096) from {linha_log.banco}:log_webhook as log_webhook where idf_webhook = (select max(idf_webhook) from {linha_log.banco}:log_webhook as ultimo where ultimo.nro_fatura = fatura.nro_fatura)) as webhook,
+            (select hor_log from {linha_log.banco}:log_webhook as log_webhook where idf_webhook = (select max(idf_webhook) from {linha_log.banco}:log_webhook as ultimo where ultimo.nro_fatura = fatura.nro_fatura)) as dat_processamento_webhook,
             fatura_cancelada.dat_cancelamento as dat_cancelamento,
             fatura_cancelada.cod_motivo,
             fatura_cancelada.des_observacao,
@@ -116,6 +117,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             BankslipSantander = ?,
             SettlementSantander = ?,
             WebhookSantander = ?,
+            DataProcessamentoWebhook = ?,
             IdUsuario = (select max(IdUsuario) from Usuario where Matricula = ?),
             DataCancelamento = ?,
             IdMotivoCancelamento = (select PkSql from PkDePara where Tabela = 'Motivo' and PkIfx = ?),
@@ -147,6 +149,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.bankslip,
             origem.settlement,
             origem.webhook,
+            origem.dat_processamento_webhook, 
             origem.mla_funcionario,
             origem.dat_cancelamento,
             origem.cod_motivo,
@@ -160,7 +163,7 @@ def convert(conn_ifx, conn_sql, linha_log):
     ))
 
     if cr_sql.rowcount == 0:
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             insert into Fatura
             (
                 NumeroFatura,
@@ -186,6 +189,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                 BankslipSantander,
                 SettlementSantander,
                 WebhookSantander,
+                DataProcessamentoWebhook,
                 IdUsuario,
                 DataCancelamento,
                 IdMotivoCancelamento,
@@ -215,6 +219,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                 ? /*BankslipSantander*/,
                 ? /*SettlementSantander*/,
                 ? /*WebhookSantander*/,
+                ? /*DataProcessamentoWebhook*/,
                 (select max(IdUsuario) from Usuario where Matricula = ?) /*IdUsuario*/,
                 ? /*DataCancelamento*/,
                 (select PkSql from PkDePara where Tabela = 'Motivo' and PkIfx = ?) /*IdMotivoCancelamento*/,
@@ -247,6 +252,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.bankslip,
             origem.settlement,
             origem.webhook,
+            origem.dat_processamento_webhook, 
             origem.mla_funcionario,
             origem.dat_cancelamento,
             origem.cod_motivo,

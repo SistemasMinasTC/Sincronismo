@@ -35,7 +35,7 @@ sincronizador['geral'] = Sincroniza (
     'acerto_cancel',            # Acerto
     #'acompanhante',             # Acompanhante
     'acomp_associado',          # AcompanhanteAssociado
-    'agregado',                 # Adesao
+    #'agregado',                 # Adesao
     'aluno',                    # Aluno
     'aluno_licenca',            # LicencaMedica
     'associado',                # Pessoa

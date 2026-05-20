@@ -74,9 +74,9 @@ def convert(conn_ifx, conn_sql, linha_log):
             agregado.dat_inicio,
             agregado.idc_cobra_taxa = 'S' as idc_cobra_taxa,
             agregado.dat_cancel,
-            'MTNC|CC|' || cod_agregado as cod_cota_agreg
-        from Minas:agregado as agregado
-        inner join nautico:agreg_nautico nautico on
+            'MTNC|CC|' || nautico.cod_cota as cod_cota_agreg
+        from minas:agregado as agregado
+        inner join (select distinct cod_tipo_associado,cod_cota from nautico:agreg_nautico) as nautico on
             nautico.cod_tipo_associado = agregado.cod_tipo_associado and
             nautico.cod_cota = agregado.cod_cota
         where
