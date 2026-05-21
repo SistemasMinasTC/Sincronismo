@@ -24,7 +24,7 @@ def convert(conn_ifx, conn_sql, linha_log):
     chave = Chave(*linha_log.pk.split('|'))
 
     if linha_log.operacao == 'del':
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             delete from Fatura
             where
                 IdClube = ? and
@@ -66,6 +66,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             case when fatura.idt_status <> 'C' then dat_pagto end as dat_pagto,
             fatura.vlr_pago,
             fatura.dat_registro_fatura,
+            fatura.dat_cancelamento_registro, 
             fatura.dat_envio_email,
             fatura.dat_envio_sms_1,
             fatura.dat_envio_sms_2,
@@ -107,6 +108,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             DataPagamento = ?,
             ValorPago = ?,
             DataRegistro = ?,
+            DataRegistroCancelamento = ?,
             DataEnvioEmail = ?,
             DataEnvioSMS1 = ?,
             DataEnvioSMS2 = ?,
@@ -139,6 +141,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.dat_pagto,
             origem.vlr_pago,
             origem.dat_registro_fatura,
+            origem.dat_cancelamento_registro, 
             origem.dat_envio_email,
             origem.dat_envio_sms_1,
             origem.dat_envio_sms_2,
@@ -179,6 +182,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                 DataPagamento,
                 ValorPago,
                 DataRegistro,
+                DataRegistroCancelamento,
                 DataEnvioEmail,
                 DataEnvioSMS1,
                 DataEnvioSMS2,
@@ -209,6 +213,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                 ? /*DataPagamento*/,
                 ? /*ValorPago*/,
                 ? /*DataRegistro*/,
+                ? /*DataRegistroCancelamento*/,
                 ? /*DataEnvioEmail*/,
                 ? /*DataEnvioSMS1*/,
                 ? /*DataEnvioSMS2*/,
@@ -242,6 +247,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.dat_pagto,
             origem.vlr_pago,
             origem.dat_registro_fatura,
+            origem.dat_cancelamento_registro,
             origem.dat_envio_email,
             origem.dat_envio_sms_1,
             origem.dat_envio_sms_2,
