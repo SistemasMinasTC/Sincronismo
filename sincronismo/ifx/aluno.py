@@ -146,6 +146,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                     Curso.CodigoCurso = ? and
                     Turma.CodigoTurma = ?
             ),
+            DataCancelamento = null,
             UltimaAlteracao = getdate()
         where IdAluno = (
             select Aluno.IdAluno
