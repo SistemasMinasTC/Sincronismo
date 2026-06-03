@@ -23,18 +23,6 @@ def convert(conn_ifx, conn_sql, linha_log):
     Chave = recordtype('Chave', 'cod_clube, nro_seq_agregado')
     chave = Chave(*linha_log.pk.split('|'))
 
-    if linha_log.operacao == 'del':
-        cr_sql.execute("""
-            delete from Adesao
-            where
-                IdAdesao = (select PkSql from PkDePara where Tabela = 'Adesao' and PkIfx = ?)
-        """, (
-            linha_log.pk
-        ))
-
-        cr_sql.close()
-        return
-
     cr_ifx.execute("""
         select
             'MTC' as cod_clube, 
@@ -59,33 +47,53 @@ def convert(conn_ifx, conn_sql, linha_log):
     linha = cr_ifx.fetchone()
     origem = Linha(*linha) if linha else None
 
+    if linha_log.operacao == 'del':
+        if origem:
+            cr_sql.execute("""
+                delete from Adesao
+                where
+                    IdCota = (select IdCota from Cota where IdClube = ? and TipoCota = ? and NumeroCota = ?)
+                    and DataInicio = ?
+            """, (
+                origem.cod_clube,
+                origem.cod_tipo_associado,
+                origem.cod_cota,
+                origem.dat_inicio,
+            ))
+
+        cr_sql.close()
+        return
+
     if not origem:
         cr_sql.close()
         return
 
     cr_sql.execute("""
         update Adesao set
-            IdCota =(select IdCota from Cota where IdClube = ? and TipoCota = ? and NumeroCota = ?),
+            IdCota = (select IdCota from Cota where IdClube = ? and TipoCota = ? and NumeroCota = ?),
             DataInicio = ?,
             CobraTaxa = ?,
             DataCancelamento = ?,
             IdCotaAdesao = (select IdCota from Cota where IdClube = 'MTNC' and TipoCota = 'CC' and NumeroCota = ?),
             UltimaAlteracao = getdate()
         where
-            IdAdesao = (select PkSql from PkDePara where Tabela = 'Adesao' and PkIfx = ?)
+            IdCota = (select IdCota from Cota where IdClube = ? and TipoCota = ? and NumeroCota = ?)
+            and DataInicio = ?
     """,(
-            origem.cod_clube, 
-            origem.cod_tipo_associado, 
-            origem.cod_cota,
-            origem.dat_inicio,
-            origem.idc_cobra_taxa,
-            origem.dat_cancel,
-            origem.cod_cota_agreg, 
-            linha_log.pk,
+        origem.cod_clube,
+        origem.cod_tipo_associado,
+        origem.cod_cota,
+        origem.dat_inicio,
+        origem.idc_cobra_taxa,
+        origem.dat_cancel,
+        origem.cod_cota_agreg,
+        origem.cod_clube,
+        origem.cod_tipo_associado,
+        origem.cod_cota,
+        origem.dat_inicio,
     ))
 
     if cr_sql.rowcount == 0:
-        cr_sql.execute('begin transaction')
 
         cr_sql.execute("""
             insert into Adesao
@@ -108,15 +116,9 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.cod_cota,
             origem.dat_inicio,
             origem.idc_cobra_taxa,
-            origem.dat_cancel, 
-            origem.cod_cota_agreg, 
+            origem.dat_cancel,
+            origem.cod_cota_agreg,
         ))
-
-        cr_sql.execute("""select ident_current('Adesao')""")
-        pkSql = cr_sql.fetchval()
-
-        cr_sql.execute("insert into PkDePara values ('Adesao',?,?)",(pkSql, linha_log.pk,))
-        cr_sql.execute("commit transaction")
 
     cr_sql.close()
 
@@ -155,4 +157,3 @@ if __name__ == "__main__":
     for linha in [Linha(*l) for l in cr_ifx]:
         print(linha)
         convert(ifx, sql, linha)
-
