@@ -326,9 +326,7 @@ if __name__ == "__main__":
         from mc_log
         where
             tabela = 'cota_associado' and
-            banco = 'nautico' and
-            tentativas = 3 and
-            pk matches '*QT|3434'
+            atualizacao is null
         order by data_hora
     """)
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
