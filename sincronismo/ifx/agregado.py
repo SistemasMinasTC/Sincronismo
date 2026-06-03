@@ -95,9 +95,9 @@ def convert(conn_ifx, conn_sql, linha_log):
                 CobraTaxa,
                 DataCancelamento,
                 IdCotaAdesao
-            ) output inserted.IdAdesao  values (
+            ) values (
                 (select IdCota from Cota where IdClube = ? and TipoCota = ? and NumeroCota = ?) /*Cota*/,
-                ? /*DataInicio*/,
+                ? /*DataInicio*/,output inserted.IdAdesao  
                 ? /*CobraTaxa*/,
                 ? /*DataCancelamento*/,
                 (select IdCota from Cota where IdClube = 'MTNC' and TipoCota = 'CC' and NumeroCota = ?) /*CotaAdesao*/
@@ -106,7 +106,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.cod_clube,
             origem.cod_tipo_associado,
             origem.cod_cota,
-            origem.dat_inicio,
+            origem.dat_inicio,output inserted.IdAdesao  
             origem.idc_cobra_taxa,
             origem.dat_cancel, 
             origem.cod_cota_agreg, 
