@@ -24,12 +24,13 @@ def convert(conn_ifx, conn_sql, linha_log):
     chave = Chave(*linha_log.pk.split('|'))
 
     if linha_log.operacao == 'del':
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             delete from Curso
             where
-                IdCurso = (select PkSql from PkDePara where Tabela = 'Curso' and PkIfx = ?)
+                IdClube = ? and CodigoCurso = ?
         """, (
-            linha_log.pk
+            chave.cod_clube,
+            chave.cod_curso,
         ))
 
         cr_sql.close()
@@ -39,7 +40,7 @@ def convert(conn_ifx, conn_sql, linha_log):
         select
             '{cod_clube}' as cod_clube,
             cod_curso,
-            '{cod_clube}|' || cod_mod_curso as cod_mod_curso,
+            cod_mod_curso,
             des_curso,
             txt_app,
             idc_exige_atestado = 'S' as idc_exige_atestado,
@@ -52,7 +53,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             idc_curso_temp = 'S' as idc_curso_temp,
             dat_ini_curso_temp,
             dat_fim_curso_temp,
-            '{cod_clube}|' || cod_plano as cod_plano,
+            cod_plano,
             idc_incide_desc = 'S' as idc_incide_desc,
             idc_paga_janeiro = 'S' as idc_paga_janeiro,
             idc_paga_fevereiro = 'S' as idc_paga_fevereiro,
@@ -76,11 +77,15 @@ def convert(conn_ifx, conn_sql, linha_log):
     linha = cr_ifx.fetchone()
     origem = Linha(*linha) if linha else None
 
+    if not origem:
+        cr_sql.close()
+        return
+
     cr_sql.execute("""
         update Curso set
             IdClube = ?,
             CodigoCurso = ?,
-            IdModalidadeEsportiva = (select PkSql from PkDePara where Tabela = 'ModalidadeEsportiva' and PkIfx = ?),
+            IdModalidadeEsportiva = (select IdModalidadeEsportiva from ModalidadeEsportiva where IdClube = ? and CodigoModalidade = ?),
             NomeCurso = ?,
             TextoApp = ?,
             ExigeAtestado = ?,
@@ -93,7 +98,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             Temporario = ?,
             DataInicio = ?,
             DataFim = ?,
-            IdPlanoCobranca = (select PkSql from PkDePara where Tabela = 'PlanoCobranca' and PkIfx = ?),
+            IdPlanoCobranca = (select IdPlanoCobranca from PlanoCobranca where IdClube = ? and CodigoPlanoCobranca = ?),
             Desconto = ?,
             PagaJaneiro = ?,
             PagaFevereiro = ?,
@@ -105,46 +110,44 @@ def convert(conn_ifx, conn_sql, linha_log):
             CobraValorCancelamento = ?,
             TaxaEspecial = ?,
             IdSubArea = (select IdSubArea from SubArea where Nome = ?),
-            IdUsuario = (select PkSql from PkDePara where Tabela = 'Usuario' and PkIfx = ?),
+            IdUsuario = (select IdUsuario from Usuario where Login = ?),
             UltimaAlteracao = getdate()
         where
-            IdCurso = (select PkSql from PkDePara where Tabela = 'Curso' and PkIfx = ?)
+            IdClube = ? and CodigoCurso = ?
     """,(
-            origem.cod_clube,
-            origem.cod_curso,
-            origem.cod_mod_curso,
-            origem.des_curso,
-            origem.txt_app,
-            origem.idc_exige_atestado,
-            origem.idc_exige_parq,
-            origem.idc_mla_isenta,
-            origem.idc_mla_padrao,
-            origem.per_desc_mla,
-            origem.idc_terceirizado,
-            origem.des_local_terc,
-            origem.idc_curso_temp,
-            origem.dat_ini_curso_temp,
-            origem.dat_fim_curso_temp,
-            origem.cod_plano,
-            origem.idc_incide_desc,
-            origem.idc_paga_janeiro,
-            origem.idc_paga_fevereiro,
-            origem.idc_paga_julho,
-            origem.idc_paga_dezembro,
-            origem.dat_desativacao,
-            origem.idc_licenca_medica,
-            origem.idc_mensal_propor,
-            origem.idc_valor_cancel,
-            origem.vlr_taxa_especial,
-            origem.cod_subarea,
-            origem.idf_cidadao_desat,
-            linha_log.pk,
+        origem.cod_clube,
+        origem.cod_curso,
+        origem.cod_clube, origem.cod_mod_curso,
+        origem.des_curso,
+        origem.txt_app,
+        origem.idc_exige_atestado,
+        origem.idc_exige_parq,
+        origem.idc_mla_isenta,
+        origem.idc_mla_padrao,
+        origem.per_desc_mla,
+        origem.idc_terceirizado,
+        origem.des_local_terc,
+        origem.idc_curso_temp,
+        origem.dat_ini_curso_temp,
+        origem.dat_fim_curso_temp,
+        origem.cod_clube, origem.cod_plano,
+        origem.idc_incide_desc,
+        origem.idc_paga_janeiro,
+        origem.idc_paga_fevereiro,
+        origem.idc_paga_julho,
+        origem.idc_paga_dezembro,
+        origem.dat_desativacao,
+        origem.idc_licenca_medica,
+        origem.idc_mensal_propor,
+        origem.idc_valor_cancel,
+        origem.vlr_taxa_especial,
+        origem.cod_subarea,
+        origem.idf_cidadao_desat,
+        origem.cod_clube, origem.cod_curso,
     ))
 
     if cr_sql.rowcount == 0:
-        cr_sql.execute('begin transaction')
-
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             insert into Curso
             (
                 IdClube,
@@ -170,8 +173,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                 PagaDezembro,
                 DataDesativacao,
                 PermiteLicencaMedica,
-                PermiteMensalidadeProporcional,erro do peter
-
+                PermiteMensalidadeProporcional,
                 CobraValorCancelamento,
                 TaxaEspecial,
                 IdSubArea,
@@ -179,7 +181,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             ) values (
                 ? /*IdClube*/,
                 ? /*CodigoCurso*/,
-                (select PkSql from PkDePara where Tabela = 'ModalidadeEsportiva' and PkIfx = ?) /*IdModalidadeEsportiva*/,
+                (select IdModalidadeEsportiva from ModalidadeEsportiva where IdClube = ? and CodigoModalidade = ?) /*IdModalidadeEsportiva*/,
                 ? /*NomeCurso*/,
                 ? /*TextoApp*/,
                 ? /*ExigeAtestado*/,
@@ -192,7 +194,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                 ? /*Temporario*/,
                 ? /*DataInicio*/,
                 ? /*DataFim*/,
-                (select PkSql from PkDePara where Tabela = 'PlanoCobranca' and PkIfx = ?) /*IdPlanoCobranca*/,
+                (select IdPlanoCobranca from PlanoCobranca where IdClube = ? and CodigoPlanoCobranca = ?) /*IdPlanoCobranca*/,
                 ? /*Desconto*/,
                 ? /*PagaJaneiro*/,
                 ? /*PagaFevereiro*/,
@@ -203,13 +205,13 @@ def convert(conn_ifx, conn_sql, linha_log):
                 ? /*PermiteMensalidadeProporcional*/,
                 ? /*CobraValorCancelamento*/,
                 ? /*TaxaEspecial*/,
-                (select PkSql from SubArea where Nome = ?) /*IdSubArea*/,
-                (select PkSql from PkDePara where Tabela = 'Usuario' and PkIfx = ?) /*IdUsuario*/
+                (select IdSubArea from SubArea where Nome = ?) /*IdSubArea*/,
+                (select IdUsuario from Usuario where Login = ?) /*IdUsuario*/
             )
         """,(
             origem.cod_clube,
             origem.cod_curso,
-            origem.cod_mod_curso,
+            origem.cod_clube, origem.cod_mod_curso,
             origem.des_curso,
             origem.txt_app,
             origem.idc_exige_atestado,
@@ -222,7 +224,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.idc_curso_temp,
             origem.dat_ini_curso_temp,
             origem.dat_fim_curso_temp,
-            origem.cod_plano,
+            origem.cod_clube, origem.cod_plano,
             origem.idc_incide_desc,
             origem.idc_paga_janeiro,
             origem.idc_paga_fevereiro,
@@ -234,14 +236,8 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.idc_valor_cancel,
             origem.vlr_taxa_especial,
             origem.cod_subarea,
-            origem.idf_cidadao_desat
+            origem.idf_cidadao_desat,
         ))
-
-        cr_sql.execute("""select ident_current('Curso')""")
-        pkSql = cr_sql.fetchval()
-
-        cr_sql.execute("insert into PkDePara values ('Curso',?,?)",(pkSql, linha_log.pk,))
-        cr_sql.execute("commit transaction")
 
     cr_sql.close()
 
