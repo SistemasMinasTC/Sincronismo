@@ -3,8 +3,23 @@
 
 import sys
 import os
+import concurrent.futures
+import threading
 from recordtype import recordtype
 from google.cloud import storage
+
+
+_semaforo_gcp = threading.Semaphore(1000)
+_executor_gcp = concurrent.futures.ThreadPoolExecutor(max_workers=1000)
+
+
+def _upload_parq(bucket, id_aluno, img_data):
+    """Roda em background — libera o semáforo ao terminar."""
+    try:
+        blob = bucket.blob(f"ParqAluno/{id_aluno}.jpg")
+        blob.upload_from_string(img_data, content_type='image/jpeg')
+    finally:
+        _semaforo_gcp.release()
 
 
 def convert(conn_ifx, conn_sql, linha_log):
@@ -95,7 +110,6 @@ def convert(conn_ifx, conn_sql, linha_log):
     if not origem:
         raise Exception('Aluno não encontrado no Informix')
 
-    # Busca IdAssociado pela chave natural
     cr_sql.execute("""
         select top 1 Associado.IdAssociado
         from Associado
@@ -243,15 +257,12 @@ def convert(conn_ifx, conn_sql, linha_log):
         ))
         id_aluno = cr_sql.fetchval()
 
-    # Upload da imagem direto para o GCS (sem salvar em disco)
-    if origem.img_parq:
-        blob = bucket.blob(f"ParqAluno/{id_aluno}.jpg")
-        blob.upload_from_string(
-            origem.img_parq,
-            content_type='image/jpeg'
-        )
-
     cr_sql.close()
+
+    # Upload da imagem para o GCP em background
+    if origem.img_parq:
+        _semaforo_gcp.acquire()
+        _executor_gcp.submit(_upload_parq, bucket, id_aluno, origem.img_parq)
 
 
 # Teste
@@ -291,3 +302,6 @@ if __name__ == "__main__":
             convert(ifx, sql, linha)
         except Exception as erro:
             print(erro)
+
+    # Aguarda todos os uploads pendentes antes de encerrar
+    _executor_gcp.shutdown(wait=True)
