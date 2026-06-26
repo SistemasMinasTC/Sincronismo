@@ -405,3 +405,4 @@ FodyWeavers.xsd
 .eric7project # mygit remove
 .jedi # mygit remove
 Sincronismo.epj # mygit remove
+.eric7project/ # mygit remove
