@@ -24,7 +24,7 @@ def convert(conn_ifx, conn_sql, linha_log):
     chave = Chave(*linha_log.pk.split('|'))
 
     if linha_log.operacao == 'del':
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             delete from DebitoAutomatico
             where
                 IdDebitoAutomatico = (select PkSql from PkDePara where Tabela = 'DebitoAutomatico' and PkIfx = ?)

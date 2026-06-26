@@ -149,7 +149,8 @@ if __name__ == "__main__":
             pk
         from mc_log
         where
-            tabela = 'agregado'
+            tabela = 'agregado' and
+            tentativas = 5
         order by data_hora
     """)
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])

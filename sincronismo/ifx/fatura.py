@@ -77,8 +77,8 @@ def convert(conn_ifx, conn_sql, linha_log):
             fatura.mla_funcionario,
             (select response::json::lvarchar(4096) from {linha_log.banco}:log_santander as log_santander where idf_log = (select max(idf_log) from {linha_log.banco}:log_santander as ultimo where ultimo.nom_operacao = 'registro' and ultimo.nro_fatura = fatura.nro_fatura)) as bankslip,
             (select response::json::lvarchar(4096) from {linha_log.banco}:log_santander as log_santander where idf_log = (select max(idf_log) from {linha_log.banco}:log_santander as ultimo where ultimo.nom_operacao <> 'registro' and ultimo.nro_fatura = fatura.nro_fatura)) as settlement,
-            (select webhook::json::lvarchar(4096) from {linha_log.banco}:log_webhook as log_webhook where idf_webhook = (select max(idf_webhook) from {linha_log.banco}:log_webhook as ultimo where ultimo.nro_fatura = fatura.nro_fatura)) as webhook,
-            (select hor_log from {linha_log.banco}:log_webhook as log_webhook where idf_webhook = (select max(idf_webhook) from {linha_log.banco}:log_webhook as ultimo where ultimo.nro_fatura = fatura.nro_fatura)) as dat_processamento_webhook,
+            (select webhook::json::lvarchar(4096) from minas:log_webhook as log_webhook where idf_webhook = (select max(idf_webhook) from minas:log_webhook as ultimo where ultimo.nro_fatura = fatura.nro_fatura)) as webhook,
+            (select hor_log from minas:log_webhook as log_webhook where idf_webhook = (select max(idf_webhook) from minas:log_webhook as ultimo where ultimo.nro_fatura = fatura.nro_fatura)) as dat_processamento_webhook,
             fatura_cancelada.dat_cancelamento as dat_cancelamento,
             fatura_cancelada.cod_motivo,
             fatura_cancelada.des_observacao,
@@ -159,7 +159,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.des_observacao,
             origem.mla_funcionario_cancelamento,
 
-            origem.cod_clube,
+            origem.cod_clube.strip(),
             origem.cod_tipo_associado,
             origem.cod_cota,
             chave.nro_fatura,
@@ -295,7 +295,8 @@ if __name__ == "__main__":
             pk
         from mc_log
         where
-            tabela = 'fatura'
+            tabela = 'fatura' 
+            and tentativas = 0
     """)
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
 

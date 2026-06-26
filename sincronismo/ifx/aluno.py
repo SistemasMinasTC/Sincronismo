@@ -9,17 +9,15 @@ from recordtype import recordtype
 from google.cloud import storage
 
 
-_semaforo_gcp = threading.Semaphore(1000)
-_executor_gcp = concurrent.futures.ThreadPoolExecutor(max_workers=1000)
-
+semaforo_gcp = threading.Semaphore(1000)
+executor_gcp = concurrent.futures.ThreadPoolExecutor(max_workers=1000)
 
 def _upload_parq(bucket, id_aluno, img_data):
-    """Roda em background — libera o semáforo ao terminar."""
     try:
         blob = bucket.blob(f"ParqAluno/{id_aluno}.jpg")
         blob.upload_from_string(img_data, content_type='image/jpeg')
     finally:
-        _semaforo_gcp.release()
+        semaforo_gcp.release()
 
 
 def convert(conn_ifx, conn_sql, linha_log):
@@ -261,8 +259,8 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     # Upload da imagem para o GCP em background
     if origem.img_parq:
-        _semaforo_gcp.acquire()
-        _executor_gcp.submit(_upload_parq, bucket, id_aluno, origem.img_parq)
+        semaforo_gcp.acquire()
+        executor_gcp.submit(_upload_parq, bucket, id_aluno, origem.img_parq)
 
 
 # Teste
@@ -291,7 +289,7 @@ if __name__ == "__main__":
             pk
         from mc_log
         where
-            tabela = 'aluno'
+            tabela = 'aluno' and tentativas=3
         order by data_hora
     """)
     Linha = recordtype('Linha', [col[0] for col in cr_ifx.description])
@@ -304,4 +302,4 @@ if __name__ == "__main__":
             print(erro)
 
     # Aguarda todos os uploads pendentes antes de encerrar
-    _executor_gcp.shutdown(wait=True)
+    executor_gcp.shutdown(wait=True)

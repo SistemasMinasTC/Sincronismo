@@ -402,3 +402,6 @@ FodyWeavers.xsd
 
 .kdev4/
 
+.eric7project # mygit remove
+.jedi # mygit remove
+Sincronismo.epj # mygit remove
