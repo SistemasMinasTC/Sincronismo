@@ -67,7 +67,14 @@ def convert(conn_ifx, conn_sql, linha_log):
     if not origem:
         cr_sql.close()
         return
-
+        
+    cr_sql.execute('''select IdCota from Cota where IdClube = 'MTNC' and TipoCota = 'CC' and NumeroCota = ?''',(origem.cod_cota_agreg, ))
+    
+    IdCotaAdesao = cr_sql.fetchval()
+    
+    if not IdCotaAdesao:
+        raise ValueError(f"IdCotaAdesao não encontrada para cod_cota_agreg: {origem.cod_cota_agreg}")
+        
     cr_sql.execute("""
         update Adesao set
             IdCota = (select IdCota from Cota where IdClube = ? and TipoCota = ? and NumeroCota = ?),
@@ -77,7 +84,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             IdCotaAdesao = (select IdCota from Cota where IdClube = 'MTNC' and TipoCota = 'CC' and NumeroCota = ?),
             UltimaAlteracao = getdate()
         where
-            IdCota = (select IdCota from Cota where IdClube = ? and TipoCota = ? and NumeroCota = ?)
+            IdCota = ?
             and DataInicio = ?
     """,(
         origem.cod_clube,
@@ -86,7 +93,7 @@ def convert(conn_ifx, conn_sql, linha_log):
         origem.dat_inicio,
         origem.idc_cobra_taxa,
         origem.dat_cancel,
-        origem.cod_cota_agreg,
+        IdCotaAdesao,
         origem.cod_clube,
         origem.cod_tipo_associado,
         origem.cod_cota,
@@ -108,7 +115,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                 ? /*DataInicio*/,
                 ? /*CobraTaxa*/,
                 ? /*DataCancelamento*/,
-                (select IdCota from Cota where IdClube = 'MTNC' and TipoCota = 'CC' and NumeroCota = ?) /*CotaAdesao*/
+                ? /*CotaAdesao*/
             )
         """,(
             origem.cod_clube,
@@ -117,7 +124,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.dat_inicio,
             origem.idc_cobra_taxa,
             origem.dat_cancel,
-            origem.cod_cota_agreg,
+            IdCotaAdesao
         ))
 
     cr_sql.close()

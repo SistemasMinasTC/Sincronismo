@@ -102,7 +102,24 @@ def convert(conn_ifx, conn_sql, linha_log):
     linha_log.banco = 'minas' if origem.IdClube == 'MTC' else 'nautico'
 
     if linha_log.operacao == 'com':
-        cr_ifx.execute(f'''execute procedure status_cota ('{origem.TipoCota}',{origem.NumeroCota})''')
+        cr_ifx.execute(f"""execute procedure status_cota ('{origem.TipoCota}',{origem.NumeroCota})""")
+        
+        cr_ifx.execute(f"""
+            update {linha_log.banco}:pessoa_fisica
+            set cod_tipo_restricao = restricao(cod_pessoa, today)
+            where
+                idt_pessoa = 1 and
+                cod_pessoa in (
+                    select cod_associado from {linha_log.banco}:associado as associado
+                    where 
+                        cod_tipo_prior = ? and
+                        cod_cota_prior = ?
+                )
+        """, (
+            origem.TipoCota, 
+            origem.NumeroCota
+        ))
+            
         return
 
     cr_ifx.execute(f"""

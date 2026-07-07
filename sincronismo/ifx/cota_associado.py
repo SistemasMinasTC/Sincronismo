@@ -26,7 +26,9 @@ def convert(conn_ifx, conn_sql, linha_log):
     # Busca dados do associado em ordem da última admissão
     #
     cr_sql.execute("""
-        select Associado.IdAssociado
+        select 
+            Associado.IdAssociado,
+            Associado.DataExclusao
         from Associado
         inner join Cota on Cota.IdCota = Associado.IdCota
         where
@@ -63,7 +65,7 @@ def convert(conn_ifx, conn_sql, linha_log):
 
             dat_exclusao = cr_ifx.fetchone()[0]
 
-            cr_sql.execute(f"""
+            cr_sql.execute("""
                 update Associado
                 set
                     DataExclusao = ?
@@ -133,7 +135,9 @@ def convert(conn_ifx, conn_sql, linha_log):
         return
 
     if dados:
-        cr_sql.execute(f"""
+        DataExclusao = dados.DataExclusao if dados.DataExclusao and dados.DataExclusao > origem.dat_incl_associado else None
+        
+        cr_sql.execute("""
             update Associado set
                 IdVinculo = (select PkSql from PkDePara where Tabela = 'Vinculo' and PkIfx = ?),
                 MatriculaFuncionario = ?,
@@ -157,7 +161,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                 Prioritario = ?,
                 AcessouEmAtraso = ?,
                 CodigoRestricao = ?,
-                DataExclusao = null,
+                DataExclusao = ?,
                 UltimaAlteracao = getdate()
             where
                 IdAssociado = ?
@@ -184,12 +188,13 @@ def convert(conn_ifx, conn_sql, linha_log):
                 origem.idt_prioritaria,
                 origem.idc_primeira_vez,
                 origem.cod_restricao,
+                DataExclusao, 
 
                 dados.IdAssociado,
         ))
 
     else:
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             insert into Associado
             (
                 IdCota,
@@ -326,7 +331,7 @@ if __name__ == "__main__":
         from mc_log
         where
             tabela = 'cota_associado' and
-            atualizacao is null
+            atualizacao is null and tentativas = 5
         order by data_hora
     """)
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
