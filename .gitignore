@@ -406,3 +406,4 @@ FodyWeavers.xsd
 .jedi # mygit remove
 Sincronismo.epj # mygit remove
 .eric7project/ # mygit remove
+sincronismo/sql/.Fatura.py.swp # mygit remove
