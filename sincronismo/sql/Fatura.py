@@ -19,7 +19,7 @@ def convert(conn_ifx, conn_sql, linha_log):
         Linha = recordtype('Linha',excluido.keys())
         origem = Linha(**excluido)
 
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             select
                 case
                     when IdClube = 'MTC' then 'minas'

@@ -400,10 +400,10 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 
+*.swp # swap do vi
 .kdev4/
 
 .eric7project # mygit remove
 .jedi # mygit remove
 Sincronismo.epj # mygit remove
 .eric7project/ # mygit remove
-sincronismo/sql/.Fatura.py.swp # mygit remove
