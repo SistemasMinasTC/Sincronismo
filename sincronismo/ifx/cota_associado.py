@@ -109,14 +109,11 @@ def convert(conn_ifx, conn_sql, linha_log):
                when 'P' then 'Processo'
             end as idt_status,
             cota_associado.cod_tipo_associado = cod_tipo_prior and cod_cota = cod_cota_prior as idt_prioritaria,
-            pessoa_fisica.idc_primeira_vez = 'N' as idc_primeira_vez,
-            (select cod_tipo_restricao from {linha_log.banco}:pessoa_fisica as pessoa_fisica where idt_pessoa = 1 and cod_pessoa = cota_associado.cod_associado) as cod_restricao
+            0 idc_primeira_vez,
+            {linha_log.banco}:restricao(associado.cod_associado, today) as cod_restricao
         from {linha_log.banco}:cota_associado as cota_associado
         inner join {linha_log.banco}:associado as associado on
             associado.cod_associado = cota_associado.cod_associado
-        left join {linha_log.banco}:pessoa_fisica as pessoa_fisica on
-            pessoa_fisica.idt_pessoa = 1 and
-            pessoa_fisica.cod_pessoa = associado.cod_associado
         where
             cota_associado.cod_associado = ? and
             cod_tipo_associado = ? and

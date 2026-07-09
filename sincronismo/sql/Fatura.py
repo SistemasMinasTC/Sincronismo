@@ -106,7 +106,7 @@ def convert(conn_ifx, conn_sql, linha_log):
         
         cr_ifx.execute(f"""
             update {linha_log.banco}:pessoa_fisica
-            set cod_tipo_restricao = restricao(cod_pessoa, today)
+            set cod_tipo_restricao = {linha_log.banco}:restricao(cod_pessoa, today)
             where
                 idt_pessoa = 1 and
                 cod_pessoa in (
