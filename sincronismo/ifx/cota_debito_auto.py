@@ -25,7 +25,7 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     if linha_log.operacao == 'del':
         cr_sql.execute("""
-            delete from DebitoAutomatico
+            update DebitoAutomatico set DataCancelamento = getdate()
             where
                 IdDebitoAutomatico = (select PkSql from PkDePara where Tabela = 'DebitoAutomatico' and PkIfx = ?)
         """, (
