@@ -102,22 +102,32 @@ def convert(conn_ifx, conn_sql, linha_log):
     linha_log.banco = 'minas' if origem.IdClube == 'MTC' else 'nautico'
 
     if linha_log.operacao == 'com':
-        cr_ifx.execute(f"""execute procedure status_cota ('{origem.TipoCota}',{origem.NumeroCota})""")
-        
+        cr_ifx.execute(f"""execute procedure {linha_log.banco}:status_cota ('{origem.TipoCota}',{origem.NumeroCota})""")
+    
+        # força o sincronismo inverso com o código de restricao
+        #
         cr_ifx.execute(f"""
-            update {linha_log.banco}:pessoa_fisica
-            set cod_tipo_restricao = {linha_log.banco}:restricao(cod_pessoa, today)
+            insert into mc_log
+            (
+                data_hora,
+                banco,
+                tabela,
+                operacao,
+                pk
+            )
+            select
+                current,
+                '{linha_log.banco}',
+                'cota_associado',
+                'upd',
+                cod_associado || '|' || cod_tipo_associado || '|' || cod_cota
+            from {linha_log.banco}:cota_associado as cota_associado
             where
-                idt_pessoa = 1 and
-                cod_pessoa in (
-                    select cod_associado from {linha_log.banco}:associado as associado
-                    where 
-                        cod_tipo_prior = ? and
-                        cod_cota_prior = ?
-                )
-        """, (
-            origem.TipoCota, 
-            origem.NumeroCota
+                cod_tipo_associado = ? and 
+                cod_cota =?
+            """,(
+                origem.TipoCota,
+                origem.NumeroCota
         ))
             
         return
@@ -268,27 +278,6 @@ def convert(conn_ifx, conn_sql, linha_log):
         """,(
             origem.NumeroFatura,
         ))
-
-    # Tratamento do código de restricao para portaria
-    #
-    cr_ifx.execute(f"""
-        update {linha_log.banco}:pessoa_fisica
-        set
-            cod_tipo_restricao = restricao(cod_pessoa,today)
-        where
-            idt_pessoa = 1 and
-            cod_pessoa in
-            (
-               select cod_associado
-               from {linha_log.banco}:cota_associado
-               where
-                  cod_tipo_associado = ? and
-                  cod_cota = ?
-            )
-    """,(
-        origem.TipoCota,
-        origem.NumeroCota
-    ))
 
     cr_ifx.close()
 

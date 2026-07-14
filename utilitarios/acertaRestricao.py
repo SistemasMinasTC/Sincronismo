@@ -39,7 +39,7 @@ def main():
                             set
                                 CodigoRestricao = {CodigoRestricao}
                             where
-                                IdAssociado = {linha.IdAssociado}
+                                IdAssociado = {linha.IdAssociado} 
                         """)
 
 

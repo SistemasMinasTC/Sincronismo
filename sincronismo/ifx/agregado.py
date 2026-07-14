@@ -12,11 +12,12 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     cr_ifx = conn_ifx.cursor()
     cr_ifx.execute('execute procedure em_sincronismo()')
-
     if linha_log.banco == 'minas':
         cod_clube = 'MTC'
     elif linha_log.banco == 'nautico':
         cod_clube = 'MTNC'
+    elif linha_log.banco == 'serra':
+        cod_clube = 'MTNC' == 'MSDR'
 
     linha_log.pk = cod_clube+'|'+linha_log.pk
 
@@ -31,12 +32,8 @@ def convert(conn_ifx, conn_sql, linha_log):
             agregado.dat_inicio,
             agregado.idc_cobra_taxa = 'S' as idc_cobra_taxa,
             agregado.dat_cancel,
-            nautico.cod_agregado as cod_cota_agreg
+            agregado.cod_empresa
         from minas:agregado as agregado
-        inner join (select distinct cod_tipo_associado,cod_cota,dat_inicio,cod_agregado from nautico:agreg_nautico) as nautico on
-            nautico.cod_tipo_associado = agregado.cod_tipo_associado and
-            nautico.cod_cota = agregado.cod_cota and
-            nautico.dat_inicio = agregado.dat_inicio
         where
             nro_seq_agregado = ?
     """,(
@@ -46,18 +43,43 @@ def convert(conn_ifx, conn_sql, linha_log):
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
     linha = cr_ifx.fetchone()
     origem = Linha(*linha) if linha else None
+    
+    # busca cota correspondente no clube agregado
+    #
+    cr_ifx.execute(f"""
+        select min(cod_agregado) as cod_agregado
+        from {'nautico' if origem.cod_empresa == 'MTNC' else 'serra'}:agreg_nautico
+        where 
+            cod_tipo_associado = ? and
+            cod_cota = ? and 
+            dat_inicio = ?
+        """,(
+            origem.cod_tipo_associado, 
+            origem.cod_cota, 
+            origem.dat_inicio
+        ))
+
+    Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
+    linha = cr_ifx.fetchone()
+    agregado = Linha(*linha) if linha else None
+    
+    if not agregado.cod_agregado:
+        raise Exception (f'Agregado {linha.pk} sem cod_agregado correspondente') 
 
     if linha_log.operacao == 'del':
         if origem:
             cr_sql.execute("""
                 delete from Adesao
                 where
-                    IdCota = (select IdCota from Cota where IdClube = ? and TipoCota = ? and NumeroCota = ?)
-                    and DataInicio = ?
+                    IdCota = (select IdCota from Cota where IdClube = ? and TipoCota = ? and NumeroCota = ?) and
+                    IdCotaAdesao = (select IdCota from Cota where IdClube = ? and TipoCota = 'CC' and NumeroCota = ?)
+                    DataInicio = ?
             """, (
                 origem.cod_clube,
                 origem.cod_tipo_associado,
                 origem.cod_cota,
+                origem.cod_empresa,
+                agregado.cod_agregado, 
                 origem.dat_inicio,
             ))
 
@@ -68,7 +90,17 @@ def convert(conn_ifx, conn_sql, linha_log):
         cr_sql.close()
         return
         
-    cr_sql.execute('''select IdCota from Cota where IdClube = 'MTNC' and TipoCota = 'CC' and NumeroCota = ?''',(origem.cod_cota_agreg, ))
+    cr_sql.execute('''
+        select IdCota 
+        from Cota 
+        where 
+            IdClube = ? and
+            TipoCota = 'CC' and
+            NumeroCota = ?
+    ''',
+        origem.cod_empresa, (
+        origem.cod_cota_agreg, 
+    ))
     
     IdCotaAdesao = cr_sql.fetchval()
     
@@ -77,31 +109,24 @@ def convert(conn_ifx, conn_sql, linha_log):
         
     cr_sql.execute("""
         update Adesao set
-            IdCota = (select IdCota from Cota where IdClube = ? and TipoCota = ? and NumeroCota = ?),
-            DataInicio = ?,
             CobraTaxa = ?,
             DataCancelamento = ?,
-            IdCotaAdesao = (select IdCota from Cota where IdClube = 'MTNC' and TipoCota = 'CC' and NumeroCota = ?),
             UltimaAlteracao = getdate()
         where
-            IdCota = ?
-            and DataInicio = ?
+            IdCota = (select IdCota from Cota where IdClube = ? and TipoCota = ? and NumeroCota = ?)  and
+            IdCotaAdesao = ? and
+            DataInicio = ?
     """,(
-        origem.cod_clube,
-        origem.cod_tipo_associado,
-        origem.cod_cota,
-        origem.dat_inicio,
         origem.idc_cobra_taxa,
         origem.dat_cancel,
-        IdCotaAdesao,
         origem.cod_clube,
         origem.cod_tipo_associado,
         origem.cod_cota,
+        IdCotaAdesao,
         origem.dat_inicio,
     ))
 
     if cr_sql.rowcount == 0:
-
         cr_sql.execute("""
             insert into Adesao
             (
