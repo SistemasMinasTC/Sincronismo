@@ -17,6 +17,8 @@ def convert(conn_ifx, conn_sql, linha_log):
         cod_clube = 'MTC'
     elif linha_log.banco == 'nautico':
         cod_clube = 'MTNC'
+    elif linha_log.banco == 'serra':
+        cod_clube = 'MSDR'
 
     linha_log.pk = cod_clube + '|' + linha_log.pk
 
@@ -165,11 +167,16 @@ if __name__ == "__main__":
             pk
         from mc_log
         where
-            tabela = '_cota_'
+            tabela = '_cota_' and
+            banco = 'serra'
         order by data_hora
     """)
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
 
     for linha in [Linha(*l) for l in cr_ifx]:
         print(linha)
-        convert(ifx, sql, linha)
+        try:
+            convert(ifx, sql, linha)
+        except Exception as erro:
+            print(erro)
+        

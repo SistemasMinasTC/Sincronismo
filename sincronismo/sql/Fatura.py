@@ -81,7 +81,8 @@ def convert(conn_ifx, conn_sql, linha_log):
             DataRegistroCancelamento,
             PIX,
             IdentificacaoMensagemMailgun,
-            IdClube
+            IdClube,
+            Fatura.IdCota
         from Fatura
         inner join Cota on Cota.IdCota = Fatura.IdCota
         left join Usuario on Usuario.IdUsuario = Fatura.IdUsuario
@@ -104,7 +105,7 @@ def convert(conn_ifx, conn_sql, linha_log):
     if linha_log.operacao == 'com':
         cr_ifx.execute(f"""execute procedure {linha_log.banco}:status_cota ('{origem.TipoCota}',{origem.NumeroCota})""")
     
-        # força o sincronismo inverso com o código de restricao
+        # força o sincronismo inverso com o status da cota e código de restricao 
         #
         cr_ifx.execute(f"""
             insert into mc_log
@@ -118,18 +119,50 @@ def convert(conn_ifx, conn_sql, linha_log):
             select
                 current,
                 '{linha_log.banco}',
-                'cota_associado',
+                '_cota_',
                 'upd',
-                cod_associado || '|' || cod_tipo_associado || '|' || cod_cota
+                cod_tipo_associado || '|' || cod_cota
             from {linha_log.banco}:cota_associado as cota_associado
             where
                 cod_tipo_associado = ? and 
                 cod_cota =?
             """,(
                 origem.TipoCota,
-                origem.NumeroCota
+                origem.NumeroCota, 
         ))
+        
+        with conecta_mssql() as db_restricao:
+            cr_restricao = db_restricao.cursor()
+            cr_restricao.execute("""
+                select 
+                    IdAssociado,
+                    NPF,
+                    case IdClube
+                        when 'MTC' then 'minas'
+                        when 'MTNC' then 'nautico'
+                        when 'MSDR' then 'serra'
+                    as banco
+                from Associado
+                inner join Cota on Cota.IdCota = Associado.IdCota
+                left join Adesao on Adesao.IdCota = Cota.IdCota
+                where
+                   Associado.IdCota in ({origem.IdCota}, (select IdCotaAdesao from Adesao where Adesao.IdCota = {origem.IdCota})) 
+            """)
             
+            Linha = recordtype('Linha',[col[0] for col in cr_restricao.description])
+            
+            for linha in [Linha(*l) for  l in cr]:
+                cr_ifx.execute(f"""select {linha.banco}:restricao({linha.NPF}, today) from dual""")
+                
+                CodigoRestricao = cr_ifx.fetchone()[0]
+                
+                cr_upd.execute(f"""
+                    update Associado
+                    set
+                        CodigoRestricao = {CodigoRestricao}
+                    where
+                        IdAssociado
+                """)
         return
 
     cr_ifx.execute(f"""

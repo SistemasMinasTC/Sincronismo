@@ -12,12 +12,13 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     cr_ifx = conn_ifx.cursor()
     cr_ifx.execute('execute procedure em_sincronismo()')
+    
     if linha_log.banco == 'minas':
         cod_clube = 'MTC'
     elif linha_log.banco == 'nautico':
         cod_clube = 'MTNC'
     elif linha_log.banco == 'serra':
-        cod_clube = 'MTNC' == 'MSDR'
+        cod_clube = 'MSDR'
 
     linha_log.pk = cod_clube+'|'+linha_log.pk
 
@@ -61,11 +62,9 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
     linha = cr_ifx.fetchone()
-    agregado = Linha(*linha) if linha else None
+    agreg = Linha(*linha) if linha else None
     
-    if not agregado.cod_agregado:
-        raise Exception (f'Agregado {linha.pk} sem cod_agregado correspondente') 
-
+        
     if linha_log.operacao == 'del':
         if origem:
             cr_sql.execute("""
@@ -97,15 +96,15 @@ def convert(conn_ifx, conn_sql, linha_log):
             IdClube = ? and
             TipoCota = 'CC' and
             NumeroCota = ?
-    ''',
-        origem.cod_empresa, (
-        origem.cod_cota_agreg, 
+    ''',(
+        origem.cod_empresa, 
+        agreg.cod_agregado, 
     ))
     
     IdCotaAdesao = cr_sql.fetchval()
     
     if not IdCotaAdesao:
-        raise ValueError(f"IdCotaAdesao não encontrada para cod_cota_agreg: {origem.cod_cota_agreg}")
+        raise ValueError(f"IdCotaAdesao não encontrada para cod_agregado: {agreg.cod_agregado}")
         
     cr_sql.execute("""
         update Adesao set
@@ -181,12 +180,14 @@ if __name__ == "__main__":
             pk
         from mc_log
         where
-            tabela = 'agregado' and
-            tentativas = 5
+            tabela = 'agregado' 
         order by data_hora
     """)
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
 
     for linha in [Linha(*l) for l in cr_ifx]:
         print(linha)
-        convert(ifx, sql, linha)
+        try:
+            convert(ifx, sql, linha)
+        except Exception as erro:
+            print(erro)
