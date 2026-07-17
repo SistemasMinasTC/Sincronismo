@@ -14,6 +14,8 @@ def convert(conn_ifx, conn_sql, linha_log):
         cod_clube = 'MTC'
     elif linha_log.banco == 'nautico':
         cod_clube = 'MTNC'
+    elif linha_log.banco == 'serra':
+        cod_clube = 'MSDR'
 
     linha_log.pk = cod_clube+'|CT|'+linha_log.pk
 
