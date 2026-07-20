@@ -41,7 +41,7 @@ def convert(conn_ifx, conn_sql, linha_log):
     cr_ifx.execute(f"""
         select
             '{cod_clube}' as cod_clube,
-            cod_curso,
+            trim(cod_curso) as cod_curso,
             cod_mod_curso,
             des_curso,
             txt_app,

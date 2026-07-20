@@ -35,6 +35,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                 case
                     when idf_cidadao in (select idf_cidadao from minas:associado) then 'Associado|' || (select min(cod_associado) from minas:associado where idf_cidadao = usuario.idf_cidadao)
                     when idf_cidadao in (select idf_cidadao from nautico:associado) then 'Associado|' || (select min(cod_associado) from nautico:associado where idf_cidadao = usuario.idf_cidadao)
+                    when idf_cidadao in (select idf_cidadao from serra:associado) then 'Associado|' || (select min(cod_associado) from nautico:associado where idf_cidadao = usuario.idf_cidadao)
                     else 'Cidadao|' || idf_cidadao
                 end
             ) as idf_cidadao,

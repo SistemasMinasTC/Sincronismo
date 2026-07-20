@@ -39,7 +39,7 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     cr_ifx.execute(f"""
         select
-            '{cod_clube}|' || cod_curso as cod_curso,
+            '{cod_clube}|' || trim(cod_curso) as cod_curso,
             cod_turma,
             trim(des_turma) as des_turma,
             cod_nivel,
