@@ -169,13 +169,14 @@ def convert(conn_ifx, conn_sql, linha_log):
       return
 
    cr_sql.execute("""
-   select top 1 CategoriaReserva.IdCategoriaReserva
+   select top 1 
+      CategoriaReserva.IdCategoriaReserva
    from CategoriaReserva
    inner join TipoReserva on TipoReserva.IdTipoReserva = CategoriaReserva.IdTipoReserva
    inner join Area on Area.IdArea = TipoReserva.IdArea
    where Area.NomeArea = ?
-   and TipoReserva.cod_projeto = ?
-   and CategoriaReserva.cod_grupo_evento = ?
+   and TipoReserva.Nome = ?
+   and CategoriaReserva.Nome = ?
    """, (origem.cod_tipo_evento, origem.cod_projeto, origem.cod_grupo_evento,))
 
    idCategoriaReserva = cr_sql.fetchval()
