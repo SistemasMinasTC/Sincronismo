@@ -26,40 +26,46 @@ def convert(conn_ifx, conn_sql, linha_log):
     chave = Chave(*linha_log.pk.split('|'))
 
     if linha_log.operacao == 'del':
-        cr_sql.execute(f"""
-            delete from LicencaMedica
+        cr_sql.execute("""
+            delete from AlunoLicenca
             where
-                IdLicencaMedica = (select PkSql from PkDePara where Tabela = 'LicencaMedica' and PkIfx = ?)
+                IdAluno = (
+                    select Aluno.IdAluno
+                    from Aluno
+                    inner join Associado on Associado.IdAssociado = Aluno.IdAssociado
+                    inner join Turma on Turma.IdTurma = Aluno.IdTurma
+                    inner join Curso on Curso.IdCurso = Turma.IdCurso
+                    where
+                        Curso.IdClube = ? and
+                        Associado.NPF = ? and
+                        Curso.CodigoCurso = ? and
+                        Turma.CodigoTurma = ?
+                ) and
+                DataInicio = convert(date, ?, 103)
         """, (
-            linha_log.pk
-        ))
-
-        cr_sql.execute(f"""
-            delete from PkDePara
-            where
-                Tabela = 'LicencaMedica' and
-                PkSql = (select PkSql from PkDePara where Tabela = 'LicencaMedica' and PkIfx = ?)
-        """, (
-            linha_log.pk
+            chave.cod_clube,
+            chave.cod_associado,
+            chave.cod_curso,
+            chave.cod_turma,
+            chave.dat_inicio_licenca,
         ))
 
         cr_sql.close()
         return
 
-    cr_ifx.execute(f"""
+    cr_ifx.execute("""
         select
-            '{cod_clube}|' || cod_associado || '|' || cod_curso || '|' || cod_turma as cod_aluno,
             dat_inclusao,
             dat_inicio_licenca,
             dat_fim_licenca,
             des_observacao
-        from {linha_log.banco}:aluno_licenca as aluno_licenca
+        from {}:aluno_licenca as aluno_licenca
         where
             cod_associado = ? and
             cod_curso = ? and
             cod_turma = ? and
             dat_inicio_licenca = to_date(?,'%d/%m/%Y')
-    """,(
+    """.format(linha_log.banco),(
         chave.cod_associado,
         chave.cod_curso,
         chave.cod_turma,
@@ -71,29 +77,41 @@ def convert(conn_ifx, conn_sql, linha_log):
     origem = Linha(*linha) if linha else None
 
     cr_sql.execute("""
-        update LicencaMedica set
-            IdAluno = (select PkSql from PkDePara where Tabela = 'Aluno' and PkIfx = ?),
+        update AlunoLicenca set
             DataInclusao = ?,
-            DataInicio = ?,
             DataFim = ?,
             Observacao = ?,
             UltimaAlteracao = getdate()
         where
-            IdLicencaMedica = (select PkSql from PkDePara where Tabela = 'LicencaMedica' and PkIfx = ?)
+            IdAluno = (
+                select Aluno.IdAluno
+                from Aluno
+                inner join Associado on Associado.IdAssociado = Aluno.IdAssociado
+                inner join Turma on Turma.IdTurma = Aluno.IdTurma
+                inner join Curso on Curso.IdCurso = Turma.IdCurso
+                where
+                    Curso.IdClube = ? and
+                    Associado.NPF = ? and
+                    Curso.CodigoCurso = ? and
+                    Turma.CodigoTurma = ?
+            ) and
+            DataInicio = ?
     """,(
-            origem.cod_aluno,
             origem.dat_inclusao,
-            origem.dat_inicio_licenca,
             origem.dat_fim_licenca,
             origem.des_observacao,
-            linha_log.pk,
+            chave.cod_clube,
+            chave.cod_associado,
+            chave.cod_curso,
+            chave.cod_turma,
+            origem.dat_inicio_licenca,
     ))
 
     if cr_sql.rowcount == 0:
         cr_sql.execute('begin transaction')
 
-        cr_sql.execute(f"""
-            insert into LicencaMedica
+        cr_sql.execute("""
+            insert into AlunoLicenca
             (
                 IdAluno,
                 DataInclusao,
@@ -101,24 +119,34 @@ def convert(conn_ifx, conn_sql, linha_log):
                 DataFim,
                 Observacao
             ) values (
-                (select PkSql from PkDePara where Tabela = 'Aluno' and PkIfx = ?) /*IdAluno*/,
+                (
+                    select Aluno.IdAluno
+                    from Aluno
+                    inner join Associado on Associado.IdAssociado = Aluno.IdAssociado
+                    inner join Turma on Turma.IdTurma = Aluno.IdTurma
+                    inner join Curso on Curso.IdCurso = Turma.IdCurso
+                    where
+                        Curso.IdClube = ? and
+                        Associado.NPF = ? and
+                        Curso.CodigoCurso = ? and
+                        Turma.CodigoTurma = ?
+                ) /*IdAluno*/,
                 ? /*DataInclusao*/,
                 ? /*DataInicio*/,
                 ? /*DataFim*/,
                 ? /*Observacao*/
             )
         """,(
-            origem.cod_aluno,
+            chave.cod_clube,
+            chave.cod_associado,
+            chave.cod_curso,
+            chave.cod_turma,
             origem.dat_inclusao,
             origem.dat_inicio_licenca,
             origem.dat_fim_licenca,
             origem.des_observacao
         ))
 
-        cr_sql.execute("""select ident_current('LicencaMedica')""")
-        pkSql = cr_sql.fetchval()
-
-        cr_sql.execute("insert into PkDePara values ('LicencaMedica',?,?)",(pkSql, linha_log.pk,))
         cr_sql.execute("commit transaction")
 
     cr_sql.close()
