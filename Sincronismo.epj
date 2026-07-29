@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project Sincronismo",
     "copyright": "Copyright (C) 2026 Gerson, ",
-    "saved": "2026-07-24, 16:00:46"
+    "saved": "2026-07-29, 10:13:40"
   },
   "project": {
     "AUTHOR": "Gerson",
@@ -987,8 +987,10 @@
       "sincronismo/sql/biblioteca/cria_triggers.py",
       "sincronismo/sql/biblioteca/preenche_idf_movimentacao.py",
       "sincronismo/sql/biblioteca/sincroniza.py",
+      "utilitarios/__init__.py",
       "utilitarios/acertaLocais.py",
-      "utilitarios/acertaRestricao.py"
+      "utilitarios/acertaRestricao.py",
+      "utilitarios/confereReceitas.py"
     ],
     "SPELLEXCLUDES": "",
     "SPELLLANGUAGE": "en_US",

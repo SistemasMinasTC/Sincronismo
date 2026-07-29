@@ -2,6 +2,7 @@
 #
 
 from recordtype import recordtype
+from datetime import datetime
 
 def convert(conn_ifx, conn_sql, linha_log):
     cr_sql = conn_sql.cursor()
@@ -41,13 +42,13 @@ def convert(conn_ifx, conn_sql, linha_log):
                         Curso.CodigoCurso = ? and
                         Turma.CodigoTurma = ?
                 ) and
-                DataInicio = convert(date, ?, 103)
+                DataInicio = ?
         """, (
             chave.cod_clube,
             chave.cod_associado,
             chave.cod_curso,
             chave.cod_turma,
-            chave.dat_inicio_licenca,
+            datetime.strptime(chave.dat_inicio_licenca, "%d/%m/%Y").date(),
         ))
 
         cr_sql.close()

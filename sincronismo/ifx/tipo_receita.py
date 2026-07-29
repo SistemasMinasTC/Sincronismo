@@ -30,6 +30,7 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     cr_ifx.execute(f"""
         select
+            cod_tipo_receita, 
             des_tipo_receita,
             trim
             (
@@ -40,7 +41,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                     when 'P' then 'Serviços'
                     else 'Outros'
                 end
-            ) as idt_receita
+            ) as nom_grupo_receita
         from {linha_log.banco}:tipo_receita as tipo_receita
         where
             cod_tipo_receita = ?
@@ -56,36 +57,34 @@ def convert(conn_ifx, conn_sql, linha_log):
         update TipoReceita set
             NomeTipoReceita = ?,
             GrupoReceita = ?,
+            CodigoTipoReceita = ?,
             UltimaAlteracao = getdate()
         where
             IdTipoReceita = (select PkSql from PkDePara where Tabela = 'TipoReceita' and PkIfx = ?)
     """,(
             origem.des_tipo_receita,
-            origem.idt_receita,
+            origem.nom_grupo_receita,
+            origem.cod_tipo_receita, 
             linha_log.pk,
     ))
 
     if cr_sql.rowcount == 0:
-        cr_sql.execute('begin transaction')
-
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             insert into TipoReceita
             (
                 NomeTipoReceita,
-                GrupoReceita
-            ) output inserted.IdTipoReceita  values (
+                GrupoReceita, 
+                CodigoTipoReceita, 
+            ) values (
                 ? /*NomeTipoReceita*/,
-                ? /*GrupoReceita*/
+                ? /*GrupoReceita*/, 
+                ? /*CodigoTipoReceita*/
             )
         """,(
             origem.des_tipo_receita,
-            origem.idt_receita
+            origem.nom_grupo_receita, 
+            origem.cod_tipo_receita
         ))
-
-        pkSql = cr_sql.fetchval()
-
-        cr_sql.execute("insert into PkDePara values ('TipoReceita',?,?)",(pkSql, linha_log.pk,))
-        cr_sql.execute("commit transaction")
 
     cr_sql.close()
 

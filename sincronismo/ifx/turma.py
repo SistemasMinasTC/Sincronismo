@@ -26,7 +26,7 @@ def convert(conn_ifx, conn_sql, linha_log):
     chave = Chave(*linha_log.pk.split('|'))
 
     if linha_log.operacao == 'del':
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             delete from Turma
             where
                 IdTurma = (select PkSql from PkDePara where Tabela = 'Turma' and PkIfx = ?)
@@ -39,11 +39,13 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     cr_ifx.execute(f"""
         select
-            '{cod_clube}|' || trim(cod_curso) as cod_curso,
+            '{cod_clube}' as cod_clube, 
+            cod_curso,
             cod_turma,
             trim(des_turma) as des_turma,
             cod_nivel,
-            '{cod_clube}|' || cod_unidade || '|' || nro_seq_local as nro_seq_local,
+            cod_unidade, 
+            nro_seq_local,
             idc_competicao = 'S' as idc_competicao,
             nro_vagas,
             case idt_sexo
@@ -51,7 +53,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                 when 'F' then 'Feminino'
                 when 'A' then 'Ambos'
             end as idt_sexo,
-            '{cod_clube}|' || cod_receita as cod_receita,
+            cod_receita,
             min_idade,
             max_idade,
             per_desconto,
@@ -68,6 +70,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             per_desconto_matr,
             dat_inclusao,
             idc_aceita_transf = 'S' as idc_aceita_transf,
+            cod_curso_fila, 
             cod_turma_fila,
             idc_muda_situacao_fila = 'S' as idc_muda_situacao_fila,
             horario_turma.hora_inicio,
@@ -93,20 +96,58 @@ def convert(conn_ifx, conn_sql, linha_log):
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
     linha = cr_ifx.fetchone()
     origem = Linha(*linha) if linha else None
+    
+    # Busca Ids no minascorp
+    #
+    cr_sql.execute(f"""
+        select
+            Turma.IdTurma, 
+            Curso.IdCurso, 
+            (select PkSql from PkDePara where Tabela = 'Nivel' and PkIfx = '{origem.cod_nivel}') as IdNivel, 
+            Local.IdLocal, 
+            Receita.IdReceita, 
+            TurmaCompartilhada.IdTurma as IdTurmaCompartilhada
+        from Clube
+        left join Curso on
+            Curso.IdClube = Clube.IdClube and
+            Curso.CodigoCurso = '{origem.cod_curso}'
+        left join Turma on
+            Turma.IdCurso = Curso.IdCurso and
+            Turma.CodigoTurma = '{origem.cod_turma}'
+        left join Local on
+            IdUnidade = (select PkSql from PkDePara where Tabela = 'Unidade' and PkIfx = '{cod_clube}|{origem.cod_unidade}') and
+            nro_seq_local = {origem.nro_seq_local}
+        left join Receita on
+            Receita.IdClube = Clube.IdClube and
+            Receita.CodigoReceita = {origem.cod_receita}
+        left join Curso as CursoCompartilhado on
+            CursoCompartilhado.IdClube = Clube.IdClube and
+            CursoCompartilhado.CodigoCurso = '{origem.cod_curso_fila}'
+        left join Turma as TurmaCompartilhada on
+            TurmaCompartilhada.IdCurso = CursoCompartilhado.IdCurso and
+            TurmaCompartilhada.CodigoTurma = '{origem.cod_turma_fila}'
+        where
+            Clube.IdClube = '{origem.cod_clube}'
+    """)
+
+    Linha = recordtype('Linha',[col[0] for col in cr_sql.description])
+    linha = cr_sql.fetchone()
+    dados = Linha(*linha) if linha else None
+        
 
     # Turma
     #
-    cr_sql.execute(f"""
+    cr_sql.execute("""
         update Turma set
-            IdCurso = (select PkSql from PkDePara where Tabela = 'Curso' and PkIfx = ?),
+            IdCurso = ?,
             CodigoTurma = ?,
             NomeTurma = ?,
-            IdNivel = (select PkSql from PkDePara where Tabela = 'Nivel' and PkIfx = ?),
-            IdLocal = (select PkSql from PkDePara where Tabela = 'Local' and PkIfx = ?),
+            IdNivel = ?,
+            IdLocal = ?,
             Competicao = ?,
             Vagas = ?,
             Sexo = ?,
-            IdReceita = (select PkSql from PkDePara where Tabela = 'Receita' and PkIfx = ?),
+            IdReceita = ?,
             IdadeMinima = ?,
             IdadeMaxima = ?,
             PercentualAcrescimo = ?,
@@ -119,21 +160,21 @@ def convert(conn_ifx, conn_sql, linha_log):
             PercentualDescontoMatricula = ?,
             DataCriacao = ?,
             AceitaTransferencia = ?,
-            IdTurmaFilaEsperaCompartilhada = (select PkSql from PkDePara where Tabela = 'Turma' and PkIfx = ?),
+            IdTurmaFilaEsperaCompartilhada = ?,
             MudaSituacaoFilaCompartilhada = ?,
             UltimaAlteracao = getdate()
         where
-            IdTurma = (select PkSql from PkDePara where Tabela = 'Turma' and PkIfx = ?)
+            IdTurma = ?
     """,(
-            origem.cod_curso,
-            origem.cod_turma,
+            dados.IdCurso,
+            origem.cod_turma, 
             origem.des_turma,
-            origem.cod_nivel,
-            origem.nro_seq_local,
+            dados.IdNivel,
+            dados.IdLocal,
             origem.idc_competicao,
             origem.nro_vagas,
             origem.idt_sexo,
-            origem.cod_receita,
+            dados.IdReceita,
             origem.min_idade,
             origem.max_idade,
             origem.per_desconto,
@@ -146,15 +187,14 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.per_desconto_matr,
             origem.dat_inclusao,
             origem.idc_aceita_transf,
-            origem.cod_turma_fila,
+            dados.IdTurmaCompartilhada, 
             origem.idc_muda_situacao_fila,
-            linha_log.pk,
+            dados.IdTurma,
     ))
 
     if cr_sql.rowcount == 0:
-        cr_sql.execute('begin transaction')
 
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             insert into Turma
             (
                 IdCurso,
@@ -180,16 +220,16 @@ def convert(conn_ifx, conn_sql, linha_log):
                 AceitaTransferencia,
                 IdTurmaFilaEsperaCompartilhada,
                 MudaSituacaoFilaCompartilhada
-            ) output inserted.IdTurma  values (
-                (select PkSql from PkDePara where Tabela = 'Curso' and PkIfx = ?) /*IdCurso*/,
+            ) values (
+                ? /*IdCurso*/,
                 ? /*CodigoTurma*/,
                 ? /*NomeTurma*/,
-                (select PkSql from PkDePara where Tabela = 'Nivel' and PkIfx = ?) /*IdNivel*/,
-                (select PkSql from PkDePara where Tabela = 'Local' and PkIfx = ?) /*IdLocal*/,
+                ? /*IdNivel*/,
+                ? /*IdLocal*/,
                 ? /*Competicao*/,
                 ? /*Vagas*/,
                 ? /*Sexo*/,
-                (select PkSql from PkDePara where Tabela = 'Receita' and PkIfx = ?) /*IdReceita*/,
+                ? /*IdReceita*/,
                 ? /*IdadeMinima*/,
                 ? /*IdadeMaxima*/,
                 ? /*PercentualAcrescimo*/,
@@ -202,15 +242,15 @@ def convert(conn_ifx, conn_sql, linha_log):
                 ? /*PercentualDescontoMatricula*/,
                 ? /*DataCriacao*/,
                 ? /*AceitaTransferencia*/,
-                (select PkSql from PkDePara where Tabela = 'Turma' and PkIfx = ?) /*IdTurmaFilaEsperaCompartilhada*/,
+                ? /*IdTurmaFilaEsperaCompartilhada*/,
                 ? /*MudaSituacaoFilaCompartilhada*/
             )
         """,(
-            origem.cod_curso,
+            dados.IdCurso,
             origem.cod_turma,
             origem.des_turma,
             origem.cod_nivel,
-            origem.nro_seq_local,
+            dados.IdLocal,
             origem.idc_competicao,
             origem.nro_vagas,
             origem.idt_sexo,
@@ -227,20 +267,17 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.per_desconto_matr,
             origem.dat_inclusao,
             origem.idc_aceita_transf,
-            origem.cod_turma_fila,
+            origem.IdTurmaCompartilhada,
             origem.idc_muda_situacao_fila
         ))
-
-        pkSql = cr_sql.fetchval()
-
-        cr_sql.execute("insert into PkDePara values ('Turma',?,?)",(pkSql, linha_log.pk,))
-        cr_sql.execute("commit transaction")
+        
+        cr_sql.execute("""select ident_current('Turma')""")
+        dados.IdTurma = cr_sql.fetchval()
 
     # Horario turma
     #
     cr_sql.execute("""
         update HorarioTurma set
-            IdTurma = (select PkSql from PkDePara where Tabela = 'Turma' and PkIfx = ?),
             HoraInicio = ?,
             HoraFim = ?,
             Segunda = ?,
@@ -252,9 +289,8 @@ def convert(conn_ifx, conn_sql, linha_log):
             Domingo = ?,
             UltimaAlteracao = getdate()
         where
-            IdHorarioTurma = (select PkSql from PkDePara where Tabela = 'HorarioTurma' and PkIfx = ?)
+            IdTurma = ? 
     """,(
-            linha_log.pk,
             origem.hora_inicio,
             origem.hora_fim,
             origem.idc_seg,
@@ -264,13 +300,13 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.idc_sex,
             origem.idc_sab,
             origem.idc_dom,
-            linha_log.pk,
+            dados.IdTurma,
     ))
 
     if cr_sql.rowcount == 0:
         cr_sql.execute('begin transaction')
 
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             insert into HorarioTurma
             (
                 IdTurma,
@@ -283,8 +319,8 @@ def convert(conn_ifx, conn_sql, linha_log):
                 Sexta,
                 Sabado,
                 Domingo
-            ) output inserted.IdHorarioTurma values (
-                (select PkSql from PkDePara where Tabela = 'Turma' and PkIfx = ?) /*IdTurma*/,
+            ) values (
+                ? /*IdTurma*/,
                 ? /*HoraInicio*/,
                 ? /*HoraFim*/,
                 ? /*Segunda*/,
@@ -296,7 +332,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                 ? /*Domingo*/
             )
         """,(
-            linha_log.pk,
+            dados.IdTurma,
             origem.hora_inicio,
             origem.hora_fim,
             origem.idc_seg,
@@ -307,11 +343,6 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.idc_sab,
             origem.idc_dom,
         ))
-
-        pkSql = cr_sql.fetchval()
-
-        cr_sql.execute("insert into PkDePara values ('HorarioTurma',?,?)",(pkSql, linha_log.pk,))
-        cr_sql.execute("commit transaction")
 
 
     cr_sql.close()
