@@ -54,19 +54,26 @@ def convert(conn_ifx, conn_sql, linha_log):
         cr_sql.close()
         return
 
-    cr_ifx.execute("""
+    cr_ifx.execute(f"""
         select
-            dat_inclusao,
-            dat_inicio_licenca,
-            dat_fim_licenca,
-            des_observacao
-        from {}:aluno_licenca as aluno_licenca
+            aluno_licenca.cod_associado, 
+            nvl(ped_transf.cod_curso_transf, aluno_licenca.cod_curso) as cod_curso, 
+            nvl(ped_transf.cod_turma_transf, aluno_licenca.cod_turma) as cod_turma, 
+            aluno_licenca.dat_inclusao,
+            aluno_licenca.dat_inicio_licenca,
+            aluno_licenca.dat_fim_licenca,
+            aluno_licenca.des_observacao
+        from {linha_log.banco}:aluno_licenca as aluno_licenca
+        left join {linha_log.banco}:ped_transf as ped_transf on
+            ped_transf.cod_associado = aluno_licenca.cod_associado and
+            ped_transf.cod_curso = aluno_licenca.cod_curso and
+            ped_transf.cod_turma = aluno_licenca.cod_turma
         where
-            cod_associado = ? and
-            cod_curso = ? and
-            cod_turma = ? and
-            dat_inicio_licenca = to_date(?,'%d/%m/%Y')
-    """.format(linha_log.banco),(
+            aluno_licenca.cod_associado = ? and
+            aluno_licenca.cod_curso = ? and
+            aluno_licenca.cod_turma = ? and
+            aluno_licenca.dat_inicio_licenca = to_date(?,'%d/%m/%Y')
+    """,(
         chave.cod_associado,
         chave.cod_curso,
         chave.cod_turma,
@@ -102,9 +109,9 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.dat_fim_licenca,
             origem.des_observacao,
             chave.cod_clube,
-            chave.cod_associado,
-            chave.cod_curso,
-            chave.cod_turma,
+            origem.cod_associado,
+            origem.cod_curso,
+            origem.cod_turma,
             origem.dat_inicio_licenca,
     ))
 
@@ -139,9 +146,9 @@ def convert(conn_ifx, conn_sql, linha_log):
             )
         """,(
             chave.cod_clube,
-            chave.cod_associado,
-            chave.cod_curso,
-            chave.cod_turma,
+            origem.cod_associado,
+            origem.cod_curso,
+            origem.cod_turma,
             origem.dat_inclusao,
             origem.dat_inicio_licenca,
             origem.dat_fim_licenca,
@@ -179,7 +186,7 @@ if __name__ == "__main__":
             pk
         from mc_log
         where
-            tabela = 'aluno_licenca'
+            tabela = 'aluno_licenca' and tentativas = 1957
     """)
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
 
