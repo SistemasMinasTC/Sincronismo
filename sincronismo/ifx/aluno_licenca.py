@@ -28,7 +28,8 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     if linha_log.operacao == 'del':
         cr_sql.execute("""
-            delete from AlunoLicenca
+            select AlunoLicenca.IdAlunoLicenca
+            from AlunoLicenca
             where
                 IdAluno = (
                     select Aluno.IdAluno
@@ -50,6 +51,26 @@ def convert(conn_ifx, conn_sql, linha_log):
             chave.cod_turma,
             datetime.strptime(chave.dat_inicio_licenca, "%d/%m/%Y").date(),
         ))
+        id_aluno_licenca = cr_sql.fetchval()
+
+        if id_aluno_licenca:
+            cr_sql.execute('begin transaction')
+
+            cr_sql.execute("""
+                delete from AlunoLicencaProcessamento
+                where IdAlunoLicenca = ?
+            """, (
+                id_aluno_licenca,
+            ))
+
+            cr_sql.execute("""
+                delete from AlunoLicenca
+                where IdAlunoLicenca = ?
+            """, (
+                id_aluno_licenca,
+            ))
+
+            cr_sql.execute('commit transaction')
 
         cr_sql.close()
         return
@@ -186,7 +207,7 @@ if __name__ == "__main__":
             pk
         from mc_log
         where
-            tabela = 'aluno_licenca' and tentativas = 1957
+            tabela = 'aluno_licenca'
     """)
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
 
