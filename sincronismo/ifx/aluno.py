@@ -45,8 +45,10 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     Chave = recordtype('Chave', 'cod_clube, cod_associado, cod_curso, cod_turma')
     chave = Chave(*linha_log.pk.split('|'))
-
+    
     if linha_log.operacao == 'del':
+        # remove pela IdTurmaOriginal que é a do chave no caso aluno em transferencia
+        #
         cr_sql.execute("""
             update Aluno set
                 DataCancelamento = getdate()
@@ -54,8 +56,8 @@ def convert(conn_ifx, conn_sql, linha_log):
                 select Aluno.IdAluno
                 from Aluno
                 inner join Associado on Associado.IdAssociado = Aluno.IdAssociado
-                inner join Turma on Turma.IdTurma         = Aluno.IdTurma
-                inner join Curso on Curso.IdCurso         = Turma.IdCurso
+                inner join Turma on Turma.IdTurma = Aluno.IdTurmaOriginal
+                inner join Curso on Curso.IdCurso = Turma.IdCurso
                 where
                     Curso.IdClube = ? and
                     Associado.NPF = ? and
@@ -183,12 +185,10 @@ def convert(conn_ifx, conn_sql, linha_log):
         origem.dat_recebeu_uniforme,
         origem.dat_fim_day_use,
         origem.cod_clube, origem.cod_curso_original, origem.cod_turma_original, # IdTurmaOriginal
-        chave.cod_clube, chave.cod_associado, chave.cod_curso, chave.cod_turma, # where IdAluno
+        origem.cod_clube, origem.cod_associado, origem.cod_curso, origem.cod_turma, # where IdAluno
     ))
 
     if cr_sql.rowcount == 0:
-        cr_sql.execute('begin transaction')
-
         cr_sql.execute("""
             insert into Aluno
             (
@@ -235,8 +235,6 @@ def convert(conn_ifx, conn_sql, linha_log):
 
         cr_sql.execute("select ident_current('Aluno')")
         id_aluno = cr_sql.fetchval()
-
-        cr_sql.execute('commit transaction')
     else:
         cr_sql.execute("""
             select Aluno.IdAluno
