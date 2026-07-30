@@ -2,7 +2,6 @@
 #
 
 from recordtype import recordtype
-import os
 from datetime import datetime
 
 def junta_data_hora(data, hora):
@@ -29,8 +28,6 @@ def convert(conn_ifx, conn_sql, linha_log):
 
    cr_ifx = conn_ifx.cursor()
    cr_ifx.execute('execute procedure em_sincronismo()')
-
-   pk = linha_log.pk
 
    linha_log.pk = 'reserva_local|'+linha_log.pk
 
@@ -143,7 +140,7 @@ def convert(conn_ifx, conn_sql, linha_log):
        return
 
    projetos_validos = {
-      'EDUCACAO': ('AULAS','ATIVIDADES','RESERVLOC'),
+      'EDUCAÇÃO': ('AULAS','ATIVIDADES','RESERVLOC'),
       'CULTURA': ('RESERVLOC','EVENTOCULT'),
       'ESPORTE': ('RESERVLOC','PROVAJOGO','TREINAMENT'),
       'LAZER':  ('RESERVLOC',)
@@ -174,15 +171,15 @@ def convert(conn_ifx, conn_sql, linha_log):
    from CategoriaReserva
    inner join TipoReserva on TipoReserva.IdTipoReserva = CategoriaReserva.IdTipoReserva
    inner join Area on Area.IdArea = TipoReserva.IdArea
-   where Area.NomeArea = ?
-   and TipoReserva.Nome = ?
-   and CategoriaReserva.Nome = ?
+   where Area.NomeArea = '?'
+   and TipoReserva.Nome = '?'
+   and CategoriaReserva.Nome = '?'
    """, (origem.cod_tipo_evento, origem.cod_projeto, origem.cod_grupo_evento,))
 
    idCategoriaReserva = cr_sql.fetchval()
 
    if idCategoriaReserva is None:
-      print(f"Categoria não encontrada: NomeArea={origem.cod_tipo_evento!r} | TipoReserva={origem.cod_projeto!r} | CategoriaReserva={origem.cod_grupo_evento!r}")
+      print(f"Categoria não encontrada: NomeArea={origem.cod_tipo_evento} | TipoReserva={origem.cod_projeto} | CategoriaReserva={origem.cod_grupo_evento}")
       cr_sql.close()
       return
 
