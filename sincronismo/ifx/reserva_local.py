@@ -40,7 +40,7 @@ def convert(conn_ifx, conn_sql, linha_log):
          when reserva_local.cod_unidade = 2 then 'MINAS 2'
          when reserva_local.cod_unidade = 3 then 'MINAS NAUTICO'
          when reserva_local.cod_unidade = 4 then 'MINAS COUNTRY'
-         when reversa_local.cod_unidade = 9 then 'LOCAIS EXTERNOS'
+         when reserva_local.cod_unidade = 9 then 'LOCAIS EXTERNOS'
       end as Unidade,
       reserva_local.nro_seq_local,
       trim(local.nom_local) as nom_local,
