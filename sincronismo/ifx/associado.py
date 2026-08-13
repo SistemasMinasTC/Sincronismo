@@ -92,8 +92,11 @@ def convert(conn_ifx, conn_sql, linha_log):
             nom_tipo_sanguineo,
             idc_uso_imagem = 'S' as idc_uso_imagem,
             idc_voluntariado = 'S' as idc_voluntariado,
-            idf_whatsapp
+            idf_whatsapp,
+            foto_associado.dat_ult_alteracao
         from {linha_log.banco}:associado as associado
+        left join {linha_log.banco}:foto_associado as foto_associado on
+            foto_associado.cod_associado = associado.cod_associado
         left join {linha_log.banco}:endereco_correspondencia as endereco_correspondencia on 
             endereco_correspondencia.cod_associado = associado.cod_associado
         left join {linha_log.banco}:cota_endereco as cota_endereco on 
@@ -155,7 +158,8 @@ def convert(conn_ifx, conn_sql, linha_log):
             UsoImagem = ?,
             Voluntario = ?,
             Whatsapp = ?,
-            UltimaAlteracao = getdate()
+            UltimaAlteracao = getdate(),
+            DataFoto = ?
         where
             IdPessoa = (select PkSql from PkDePara where Tabela = 'Pessoa' and PkIfx = ?)
     """,(
@@ -198,6 +202,7 @@ def convert(conn_ifx, conn_sql, linha_log):
         origem.idc_uso_imagem,
         origem.idc_voluntariado,
         origem.idf_whatsapp,
+        origem.dat_ult_alteracao,
         linha_log.pk,
     ))
 
@@ -245,7 +250,8 @@ def convert(conn_ifx, conn_sql, linha_log):
                 TipoSanguineo,
                 UsoImagem,
                 Voluntario,
-                Whatsapp
+                Whatsapp,
+                DataFoto
             ) values (
                 ?,
                 ?,
@@ -263,6 +269,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                 (select PkSql from PkDePara where Tabela = 'Nacionalidade' and PkIfx = ?),
                 (select PkSql from PkDePara where Tabela = 'Profissao' and PkIfx = ?),
                 (select PkSql from PkDePara where Tabela = 'TipoDocumento' and PkIfx = ?),
+                ?,
                 ?,
                 ?,
                 ?,
@@ -326,7 +333,8 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.nom_tipo_sanguineo,
             origem.idc_uso_imagem,
             origem.idc_voluntariado,
-            origem.idf_whatsapp
+            origem.idf_whatsapp,
+            origem.dat_ult_alteracao
         ))
 
         cr_sql.execute("""select ident_current('Pessoa')""")

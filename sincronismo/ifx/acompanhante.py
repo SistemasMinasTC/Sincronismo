@@ -54,8 +54,12 @@ def convert(conn_ifx, conn_sql, linha_log):
             dat_prev_encerra,
             '{cod_clube}|' || cod_tipo_associado || '|' || cod_cota as cod_cota,
             idc_termo_acesso = 'S' as idc_termo_acesso,
-            cod_carteira
+            cod_carteira,
+            foto_pessoa.dat_ult_alteracao
         from {linha_log.banco}:acompanhante as acompanhante
+        left join {linha_log.banco}:foto_pessoa as foto_pessoa on
+            foto_pessoa.idt_pessoa = 3 and
+            foto_pessoa.cod_pessoa = acompanhante.nro_seq_acomp
         where
             nro_seq_acomp = ?
     """,(
@@ -74,6 +78,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             Sexo = ?,
             DataNascimento = ?,
             NumeroDocumento = ?,
+            DataFoto = ?,
             UltimaAlteracao = getdate()
         where
             IdPessoa = (select PkSql from PkDePara where Tabela = 'Pessoa' and PkIfx = ?)
@@ -82,6 +87,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.idt_sexo,
             origem.dat_nascimento,
             origem.des_identificacao,
+            origem.dat_ult_alteracao,
             origem.cod_pessoa,
     ))
 
@@ -94,20 +100,24 @@ def convert(conn_ifx, conn_sql, linha_log):
                 Nome,
                 Sexo,
                 DataNascimento,
-                NumeroDocumento
-            ) output inserted.IdPessoa values (
+                NumeroDocumento,
+                DataFoto
+            )   values (
                 ? /*Nome*/,
                 ? /*Sexo*/,
                 ? /*DataNascimento*/,
-                ? /*NumeroDocumento*/
+                ? /*NumeroDocumento*/,
+                ? /*DataFoto*/
             )
         """,(
             origem.nom_acompanhante,
             origem.idt_sexo,
             origem.dat_nascimento,
-            origem.des_identificacao
+            origem.des_identificacao,
+            origem.dat_ult_alteracao,
         ))
 
+        cr_sql.execute("""select ident_current('Pessoa')""")
         pkSql = cr_sql.fetchval()
 
         cr_sql.execute("insert into PkDePara values ('Pessoa',?,?)",(pkSql, origem.cod_pessoa,))
