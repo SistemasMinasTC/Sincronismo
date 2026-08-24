@@ -35,7 +35,7 @@ sincronizador['geral'] = Sincroniza (
     'acerto_cancel',            # Acerto
     #'acompanhante',             # Acompanhante
     #'acomp_associado',          # AcompanhanteAssociado
-    #'agregado',                 # Adesao
+    'agregado',                 # Adesao
     'aluno',                    # Aluno
     'aluno_licenca',            # LicencaMedica
     'associado',                # Pessoa
@@ -68,7 +68,7 @@ sincronizador['geral'] = Sincroniza (
     'profissoes',               # Profissao
     'receita',                  # Receita
     'rec_nau_minas',            # EquivalenciaReceita
-    'reserva_local',            # GE_LocalReserva
+    'reserva_local',            # LocalReserva
     'taxa_parentesco',          # Vinculo e TaxaDependente
     'tipo_acompanhante',        # TipoAcompanhante
     'tipo_concessao',           # ClasseCota
@@ -78,7 +78,7 @@ sincronizador['geral'] = Sincroniza (
     'tipo_documento',           # TipoDocumento
     'tipo_isencao',             # TipoIsencao
     'tipo_receita',             # TipoReceita
-    'tmp_local',                # Local
+    #'tmp_local',                # Local
     'turma',                    # Turma
     'uf',                       # UF
     'unidade',                  # Unidade

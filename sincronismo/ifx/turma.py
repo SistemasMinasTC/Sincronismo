@@ -27,6 +27,14 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     if linha_log.operacao == 'del':
         cr_sql.execute("""
+            delete from HorarioTurma
+            where
+                IdTurma = (select PkSql from PkDePara where Tabela = 'Turma' and PkIfx = ?)
+        """, (
+            linha_log.pk
+        ))
+        
+        cr_sql.execute("""
             delete from Turma
             where
                 IdTurma = (select PkSql from PkDePara where Tabela = 'Turma' and PkIfx = ?)
@@ -96,6 +104,9 @@ def convert(conn_ifx, conn_sql, linha_log):
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
     linha = cr_ifx.fetchone()
     origem = Linha(*linha) if linha else None
+    
+    if not origem:
+        raise Exception('Turma não existente')
     
     # Busca Ids no minascorp
     #
@@ -249,7 +260,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             dados.IdCurso,
             origem.cod_turma,
             origem.des_turma,
-            origem.cod_nivel,
+            dados.IdNivel,
             dados.IdLocal,
             origem.idc_competicao,
             origem.nro_vagas,
@@ -267,7 +278,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.per_desconto_matr,
             origem.dat_inclusao,
             origem.idc_aceita_transf,
-            origem.IdTurmaCompartilhada,
+            dados.IdTurmaCompartilhada,
             origem.idc_muda_situacao_fila
         ))
         
@@ -304,8 +315,6 @@ def convert(conn_ifx, conn_sql, linha_log):
     ))
 
     if cr_sql.rowcount == 0:
-        cr_sql.execute('begin transaction')
-
         cr_sql.execute("""
             insert into HorarioTurma
             (
@@ -374,13 +383,13 @@ if __name__ == "__main__":
             pk
         from mc_log
         where
-            tabela = 'turma'
+            tabela = 'turma' and tentativas = 57
     """)
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
 
     for linha in [Linha(*l) for l in cr_ifx]:
         print(linha)
-        #try:
-        convert(ifx, sql, linha)
-        #except Exception as erro:
-        #    print(erro)
+        try:
+            convert(ifx, sql, linha)
+        except Exception as erro:
+            print(erro)
