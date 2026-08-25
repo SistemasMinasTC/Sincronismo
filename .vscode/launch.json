@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Debug com argumento",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "args": ["${input:ambiente}"],
+            "console": "integratedTerminal"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "ambiente",
+            "type": "promptString",
+            "description": "Digite o ambiente (producao/homologacao)"
+        }
+    ]
+}
