@@ -20,7 +20,7 @@ def convert(conn_ifx, conn_sql, linha_log):
     Chave = recordtype('Chave', 'idf_tipo_documento')
     chave = Chave(*PkIfx.split('|')) if PkIfx else Chave(*[None for i in Chave._fields])
 
-    linha_log.banco = 'minas' if 'cod_clube' not in chave._fields or chave.cod_clube == 'MTC' else 'nautico'
+    linha_log.banco = 'minas' if 'cod_clube' not in chave._fields or chave.cod_clube == 'MTC' else 'nautico' if chave.cod_clube == 'MTNC' else 'serra'
 
     if linha_log.operacao == 'del':
         cr_ifx.execute(f"""

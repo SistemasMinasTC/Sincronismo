@@ -19,6 +19,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             case
                 when Cota.IdClube = 'MTC' then 'minas'
                 when Cota.IdClube = 'MTNC' then 'nautico'
+                when Cota.IdClube = 'MSDR' then 'serra'
             end as CodigoClube,
             Cota.TipoCota,
             Cota.NumeroCota,

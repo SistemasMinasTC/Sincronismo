@@ -32,7 +32,7 @@ def convert(conn_ifx, conn_sql, linha_log):
 
         IdClube,TipoCota,NumeroCota = cr_sql.fetchone()
 
-        linha_log.banco = 'minas' if IdClube == 'MTC' else 'nautico'
+        linha_log.banco = 'minas' if IdClube == 'MTC' else 'nautico' if IdClube == 'MTNC' else 'serra'
 
         cr_ifx.execute(f"""
             delete from {linha_log.banco}:cota_debito_auto

@@ -13,7 +13,7 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     cr_ifx = conn_ifx.cursor()
     cr_ifx.execute('execute procedure em_sincronismo()')
-
+    
     if linha_log.operacao == 'del':
         excluido = json.loads(linha_log.excluido)[0]
         Linha = recordtype('Linha',excluido.keys())
@@ -23,7 +23,8 @@ def convert(conn_ifx, conn_sql, linha_log):
             select
                 case
                     when IdClube = 'MTC' then 'minas'
-                    else 'nautico'
+                    when IdClube = 'MTC' then  'nautico'
+                    when IdClube = 'MSDR' then  'serra'
                 end as IdBanco
             from Cota
             where IdCota = ?
@@ -100,69 +101,11 @@ def convert(conn_ifx, conn_sql, linha_log):
     Chave = recordtype('Chave', 'nro_fatura')
     chave = Chave(origem.NumeroFatura)
 
-    linha_log.banco = 'minas' if origem.IdClube == 'MTC' else 'nautico'
+    linha_log.banco = 'minas' if origem.IdClube == 'MTC' else 'nautico' if origem.IdClube == 'MTNC' else 'serra' 
 
     if linha_log.operacao == 'com':
         cr_ifx.execute(f"""execute procedure {linha_log.banco}:status_cota ('{origem.TipoCota}',{origem.NumeroCota})""")
-    
-        # força o sincronismo inverso com o status da cota e código de restricao 
-        #
-        cr_ifx.execute(f"""
-            insert into mc_log
-            (
-                data_hora,
-                banco,
-                tabela,
-                operacao,
-                pk
-            )
-            select
-                current,
-                '{linha_log.banco}',
-                '_cota_',
-                'upd',
-                cod_tipo_associado || '|' || cod_cota
-            from {linha_log.banco}:cota_associado as cota_associado
-            where
-                cod_tipo_associado = ? and 
-                cod_cota =?
-            """,(
-                origem.TipoCota,
-                origem.NumeroCota, 
-        ))
-        
-        with conecta_mssql() as db_restricao:
-            cr_restricao = db_restricao.cursor()
-            cr_restricao.execute("""
-                select 
-                    IdAssociado,
-                    NPF,
-                    case IdClube
-                        when 'MTC' then 'minas'
-                        when 'MTNC' then 'nautico'
-                        when 'MSDR' then 'serra'
-                    as banco
-                from Associado
-                inner join Cota on Cota.IdCota = Associado.IdCota
-                left join Adesao on Adesao.IdCota = Cota.IdCota
-                where
-                   Associado.IdCota in ({origem.IdCota}, (select IdCotaAdesao from Adesao where Adesao.IdCota = {origem.IdCota})) 
-            """)
-            
-            Linha = recordtype('Linha',[col[0] for col in cr_restricao.description])
-            
-            for linha in [Linha(*l) for  l in cr]:
-                cr_ifx.execute(f"""select {linha.banco}:restricao({linha.NPF}, today) from dual""")
-                
-                CodigoRestricao = cr_ifx.fetchone()[0]
-                
-                cr_upd.execute(f"""
-                    update Associado
-                    set
-                        CodigoRestricao = {CodigoRestricao}
-                    where
-                        IdAssociado
-                """)
+        cr_ifx.execute('execute procedure fora_de_sincronismo()')
         return
 
     cr_ifx.execute(f"""
@@ -344,7 +287,8 @@ if __name__ == "__main__":
         from mc_log
         where
             tabela = 'Fatura'
-            and operacao = 'com'
+            and tentativas = 3
+            and operacao <> 'com'
     """)
 
     Linha = recordtype('Linha',[col[0] for col in cr_sql.description])

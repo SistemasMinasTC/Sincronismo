@@ -1,10 +1,8 @@
 #!/usr/bin/python
 #
-from pywebio.output import *
-from conexoes import *
 def createSincronismoSqlIfx(tabelaIfx: str, primaryKeyIfx: list, tabelaSql: str, primaryKeySql: list, autoIncremento: bool, dePara: dict):
     if autoIncremento:
-        projetaPkIfx = f""",
+        projetaPkIfx = """,
             PkDePara.PkIfx"""
     else:
         projetaPkIfx = f"""
@@ -54,7 +52,8 @@ def convert(conn_ifx, conn_sql, linha_log):
             select
                 case
                     when IdClube = 'MTC' then 'minas'
-                    else 'nautico'
+                    when IdClube = 'MTNC' then 'nautico'
+                   when IdClube = 'MSDR' then  'serra'
                 end as IdBanco
             from Cota
             where IdCota = ?

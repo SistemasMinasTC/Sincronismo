@@ -207,21 +207,26 @@ if __name__ == "__main__":
     if not sql:
         print('Banco mssql não disponível')
         sys.exit()
- 
-    LinhaLog = recordtype('LinhaLog', 'banco, tabela, operacao, pk')
- 
-    for banco in ('minas', 'nautico', 'serra'):
-        cr_ifx = ifx.cursor()
-        cr_ifx.execute(f"""
-            select
-                cod_associado
-            from {banco}:conselheiro
-        """)
- 
-        for (cod_associado,) in cr_ifx:
-            linha_log = LinhaLog(banco, 'conselheiro', 'upd', str(cod_associado))
-            print(linha_log)
-            try:
-                convert(ifx, sql, linha_log)
-            except Exception as erro:
-                print(erro)
+        
+    cr_ifx = ifx.cursor()
+    
+    cr_ifx.execute("""
+        select
+            id,
+            data_hora,
+            banco,
+            tabela,
+            operacao,
+            pk
+        from mc_log
+        where
+            tabela = 'conselheiro'
+    """)
+    Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
+
+    for linha in [Linha(*l) for l in cr_ifx]:
+        print(linha)
+        try:
+            convert(ifx, sql, linha)
+        except Exception as erro:
+            print(erro)

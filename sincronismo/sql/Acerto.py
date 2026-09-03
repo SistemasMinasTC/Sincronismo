@@ -88,8 +88,13 @@ def convert(conn_ifx, conn_sql, linha_log):
     Chave = recordtype('Chave','cod_clube, nro_acerto_cancel')
     chave = Chave(*origem.PkIfx.split('|')) if origem.PkIfx else Chave(None, None)
 
-    linha_log.banco = 'minas' if origem.IdClube == 'MTC' else 'nautico'
-
+    if origem.IdClube == 'MTC':
+        linha_log.banco = 'minas' 
+    elif origem.IdClube == 'MTNC':
+        linha.log.banco = 'nautico'
+    elif origem.IdClube == 'MSDR':
+        linha.log.banco = 'serra'
+        
     cr_ifx.execute(f"""
         update {linha_log.banco}:acerto_cancel
         set

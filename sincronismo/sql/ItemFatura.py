@@ -50,7 +50,7 @@ def convert(conn_ifx, conn_sql, linha_log):
         select
             case Cota.IdClube
                 when 'MTC' then 'minas'
-                else 'nautico'
+                when 'MTNC' then  'nautico'
             end as cod_banco,
             Fatura.NumeroFatura,
             ItemFatura.NumeroItem,

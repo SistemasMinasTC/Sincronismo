@@ -43,6 +43,7 @@ sincronizador['geral'] = Sincroniza (
     'associado_atestado',       # PessoaAtestadoMedico
     'atestado',                 # AtestadoMedico
     'banco',                    # Banco
+    'conselheiro',              # Conselheiro
     'cota_associado',           # Associado
     'cota_debito_auto',         # DebitoAutomatico
     'cota_pagto_rejeit',        # PagamentoRejeitado

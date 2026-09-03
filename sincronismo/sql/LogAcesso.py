@@ -96,7 +96,7 @@ def convert(conn_ifx, conn_sql, linha_log):
     else:
         idt_pessoa = cod_pessoa = None
 
-    banco = 'minas' if cod_clube == 'MTC' else 'nautico'
+    banco = 'minas' if cod_clube == 'MTC' else 'nautico' if cod_clube == 'MTNC' else 'serra'
 
     if not academia:
         if not origem.PkIfx:

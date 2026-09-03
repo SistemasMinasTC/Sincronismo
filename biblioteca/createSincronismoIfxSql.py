@@ -1,11 +1,5 @@
 #!/usr/bin/python
 #
-from pywebio.output import *
-
-from conexoes import *
-from biblioteca.createSincronismoIfxSql import *
-from biblioteca.createSincronismoSqlIfx import *
-
 def createSincronismoIfxSql(tabelaIfx: str, primaryKeyIfx: list, tabelaSql: str, primaryKeySql: list, autoIncremento: bool, dePara: dict):
     def _wherePk_(tabela):
         return f"(select PkSql from PkDePara where Tabela = '{tabela}' and PkIfx = ?)" if autoIncremento else "?"
@@ -24,6 +18,8 @@ def createSincronismoIfxSql(tabelaIfx: str, primaryKeyIfx: list, tabelaSql: str,
         cod_clube = 'MTC'
     elif linha_log.banco == 'nautico':
         cod_clube = 'MTNC'
+    elif linha_log.banco == 'serra':
+        cod_clube = 'MSDR'
 
     linha_log.pk = cod_clube+'|'+linha_log.pk
     ''' if 'cod_clube' in colunasIfx else ''

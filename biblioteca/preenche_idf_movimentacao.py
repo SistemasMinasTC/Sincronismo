@@ -2,7 +2,6 @@
 # -*- coding:utf-8 -*-
 #
 
-import os, sys, pyodbc
 from recordtype import recordtype
 from conexoes import *
 
@@ -45,7 +44,7 @@ for linha in (Linha(*l) for l in cr_sql):
 
     cr_ifx.execute(f"""
         select idf_movimentacao
-        from {'minas' if linha.IdClube == 'MTC' else 'nautico'}:_movimentacao_receita_
+        from {'minas' if linha.IdClube == 'MTC' else 'nautico' if linha.IdClube == 'MTNC' else 'serra'}:_movimentacao_receita_
         where
            cod_tipo_associado = ? and
            cod_cota = ? and

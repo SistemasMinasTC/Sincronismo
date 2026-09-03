@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project Sincronismo",
     "copyright": "Copyright (C) 2026 Gerson, ",
-    "saved": "2026-07-29, 10:13:40"
+    "saved": "2026-09-03, 17:10:17"
   },
   "project": {
     "AUTHOR": "Gerson",
@@ -657,6 +657,7 @@
       "sincronismo/ifx/atestado.py",
       "sincronismo/ifx/banco.py",
       "sincronismo/ifx/cidadao.py",
+      "sincronismo/ifx/conselheiro.py",
       "sincronismo/ifx/cota_associado.py",
       "sincronismo/ifx/cota_debito_auto.py",
       "sincronismo/ifx/cota_pagto_rejeit.py",
@@ -990,6 +991,7 @@
       "utilitarios/__init__.py",
       "utilitarios/acertaLocais.py",
       "utilitarios/acertaRestricao.py",
+      "utilitarios/acertaStatusCota.py",
       "utilitarios/confereReceitas.py"
     ],
     "SPELLEXCLUDES": "",

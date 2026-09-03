@@ -102,7 +102,7 @@ def main(BANCO, MES):
             from ReceitaCota
             inner join Receita on Receita.IdReceita = ReceitaCota.IdReceita
             where
-               IdClube = '{"MTC" if BANCO == "minas" else "MTNC"}' and
+               IdClube = '{"MTC" if BANCO == "minas" else "MTNC" if BANCO == 'nautico' else "MSDR"}' and
                ReceitaCota.DataReceita between '2026-{MES}-01 00:00:00.000' and  '2026-{MES}-01 00:00:00.999'
             group by CodigoReceita
         """)
