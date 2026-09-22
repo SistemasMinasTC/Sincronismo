@@ -309,7 +309,7 @@ def convert(conn_ifx, conn_sql, linha_log):
       IdLocalReserva = cr_sql.fetchval()
 
 
-      cr_sql.execute(f"""
+      cr_sql.execute("""
          insert into OrganizadorLocalReserva
          (
             IdLocalReserva,
@@ -350,7 +350,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             f"{origem.unidade} | {cod_clube} | {origem.nom_local}"
          )
       else:
-         cr_sql.execute(f"""
+         cr_sql.execute("""
          insert into LocaisReservados
          (
            IdLocal,
@@ -368,8 +368,8 @@ def convert(conn_ifx, conn_sql, linha_log):
 
       cr_ifx.execute(f"""
         select
-            vlr_parcela,
-            nro_parcelas,
+            nvl(vlr_parcela,0) as vlr_parcela, 
+            nvl(nro_parcelas,0) as nro_parcelas, 
             dat_vencimento,
             dat_pagamento,
             des_pagamento

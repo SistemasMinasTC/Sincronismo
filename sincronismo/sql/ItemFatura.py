@@ -51,6 +51,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             case Cota.IdClube
                 when 'MTC' then 'minas'
                 when 'MTNC' then  'nautico'
+	        when 'MSDR' then 'serra'
             end as cod_banco,
             Fatura.NumeroFatura,
             ItemFatura.NumeroItem,

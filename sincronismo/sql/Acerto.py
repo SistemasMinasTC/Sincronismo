@@ -91,9 +91,9 @@ def convert(conn_ifx, conn_sql, linha_log):
     if origem.IdClube == 'MTC':
         linha_log.banco = 'minas' 
     elif origem.IdClube == 'MTNC':
-        linha.log.banco = 'nautico'
+        linha_log.banco = 'nautico'
     elif origem.IdClube == 'MSDR':
-        linha.log.banco = 'serra'
+        linha_log.banco = 'serra'
         
     cr_ifx.execute(f"""
         update {linha_log.banco}:acerto_cancel
