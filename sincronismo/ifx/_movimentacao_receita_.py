@@ -1,11 +1,10 @@
 #!/usr/bin/python
 #
 
-import time
 from recordtype import recordtype
 
 def _busca_dados_complementares(cr_sql,chave):
-    cr_sql.execute(f"""
+    cr_sql.execute("""
         select
             Associado.IdAssociado,
             Receita.IdReceita,

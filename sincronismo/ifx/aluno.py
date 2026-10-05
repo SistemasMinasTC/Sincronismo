@@ -171,6 +171,7 @@ def convert(conn_ifx, conn_sql, linha_log):
             inner join Turma on Turma.IdTurma = Aluno.IdTurma
             inner join Curso on Curso.IdCurso = Turma.IdCurso
             where
+                Aluno.DataCancelamento is null and
                 Curso.IdClube = ? and
                 Associado.NPF = ? and
                 Curso.CodigoCurso = ? and
@@ -289,7 +290,7 @@ if __name__ == "__main__":
             pk
         from mc_log
         where
-            tabela = 'aluno' and tentativas=57
+            tabela = 'aluno' and tentativas=3 and id=39640093
         order by data_hora
     """)
     Linha = recordtype('Linha', [col[0] for col in cr_ifx.description])
@@ -300,6 +301,7 @@ if __name__ == "__main__":
             convert(ifx, sql, linha)
         except Exception as erro:
             print(erro)
+            sys.exit()
 
     # Aguarda todos os uploads pendentes antes de encerrar
     executor_gcp.shutdown(wait=True)

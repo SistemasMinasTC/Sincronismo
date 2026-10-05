@@ -132,7 +132,10 @@ def main(BANCO, MES):
 # 
 #
 if __name__ == "__main__":
-    BANCO = sys.argv[2]
-    MES = sys.argv[3]
-    
-    main(BANCO, MES)
+    try:
+        BANCO = sys.argv[2]
+        MES = sys.argv[3]
+    except:
+        print('sintaxe: confereReceitas.py <producao|homologacao> <minas|nautico|serra> <mes>')
+    else:
+        main(BANCO, MES)

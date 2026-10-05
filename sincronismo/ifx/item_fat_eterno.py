@@ -26,7 +26,7 @@ def convert(conn_ifx, conn_sql, linha_log):
     chave = Chave(*linha_log.pk.split('|'))
 
     if linha_log.operacao == 'del':
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             delete from ItemFatura
             where
                 IdFatura = (select IdFatura from Fatura where IdClube = ? and NumeroFatura = ?) and
@@ -122,7 +122,7 @@ def convert(conn_ifx, conn_sql, linha_log):
     ))
 
     if cr_sql.rowcount == 0:
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             insert into ItemFatura
             (
                 IdFatura,

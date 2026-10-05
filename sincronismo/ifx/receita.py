@@ -61,7 +61,6 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     cr_sql.execute("""
         update Receita set
-            IdClube = ?,
             NomeReceita = ?,
             IdTipoReceita = (select PkSql from PkDePara where Tabela = 'TipoReceita' and PkIfx = ?),
             Faturar = ?,
@@ -69,12 +68,11 @@ def convert(conn_ifx, conn_sql, linha_log):
             CodigoConta = ?,
             CodigoCentroCusto = ?,
             CodigoProjetoContabil = ?,
-            CodigoReceita = ?,
             UltimaAlteracao = getdate()
         where
-            IdReceita = (select PkSql from PkDePara where Tabela = 'Receita' and PkIfx = ?)
+            IdClube = ? and
+            CodigoReceita = ?
     """,(
-            origem.cod_clube,
             origem.des_receita,
             origem.cod_tipo_receita,
             origem.idc_fatura,
@@ -82,14 +80,12 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.cod_conta_reduz,
             origem.cod_centro_custo,
             origem.cod_proj_contab,
+            origem.cod_clube,
             origem.cod_receita,
-            linha_log.pk,
     ))
 
     if cr_sql.rowcount == 0:
-        cr_sql.execute('begin transaction')
-
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             insert into Receita
             (
                 IdClube,
@@ -123,13 +119,6 @@ def convert(conn_ifx, conn_sql, linha_log):
             origem.cod_proj_contab,
             origem.cod_receita
         ))
-
-        cr_sql.execute("""select ident_current('Receita')""")
-
-        pkSql = cr_sql.fetchval()
-
-        cr_sql.execute("insert into PkDePara values ('Receita',?,?)",(pkSql, linha_log.pk,))
-        cr_sql.execute("commit transaction")
 
     cr_sql.close()
 

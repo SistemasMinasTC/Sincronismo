@@ -26,7 +26,7 @@ def convert(conn_ifx, conn_sql, linha_log):
     chave = Chave(*linha_log.pk.split('|'))
 
     if linha_log.operacao == 'del':
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             delete from TaxaFrequencia
             where
                 IdTaxaFrequencia = (select PkSql from PkDePara where Tabela = 'TaxaFrequencia' and PkIfx = ?)
@@ -83,7 +83,7 @@ def convert(conn_ifx, conn_sql, linha_log):
     if cr_sql.rowcount == 0:
         cr_sql.execute('begin transaction')
 
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             insert into TaxaFrequencia
             (
                 IdCota,
@@ -91,7 +91,7 @@ def convert(conn_ifx, conn_sql, linha_log):
                 DataInicioAdesao,
                 DataFimAdesao,
                 Observacao
-            ) output values (
+            ) values (
                 (select PkSql from PkDePara where Tabela = 'Cota' and PkIfx = ?) /*IdCota*/,
                 ? /*PercentualDesconto*/,
                 ? /*DataInicioAdesao*/,

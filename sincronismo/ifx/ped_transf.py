@@ -18,10 +18,8 @@ def convert(conn_ifx, conn_sql, linha_log):
             tabela,
             operacao,
             pk
-        ) values (current,'{linha_log.banco}','aluno','upd','{chave.cod_curso}|{chave.cod_turma}')
+        ) values (current,'{linha_log.banco}','aluno','upd','{chave.cod_associado}|{chave.cod_curso}|{chave.cod_turma}')
     """)
-
-
 
 # Teste
 #

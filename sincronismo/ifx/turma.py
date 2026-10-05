@@ -144,6 +144,16 @@ def convert(conn_ifx, conn_sql, linha_log):
     Linha = recordtype('Linha',[col[0] for col in cr_sql.description])
     linha = cr_sql.fetchone()
     dados = Linha(*linha) if linha else None
+    
+    if dados and not dados.IdLocal:
+        if origem.cod_unidade == 1:
+            dados.IdLocal = 1039
+        elif origem.cod_unidade == 2:
+            dados.IdLocal = 1040
+        elif origem.cod_unidade == 3:
+            dados.IdLocal = 1042
+        elif origem.cod_unidade == 4:
+            dados.IdLocal = 1041
         
 
     # Turma
@@ -383,7 +393,7 @@ if __name__ == "__main__":
             pk
         from mc_log
         where
-            tabela = 'turma' and tentativas = 57
+            tabela = 'turma' and tentativas = 3
     """)
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
 

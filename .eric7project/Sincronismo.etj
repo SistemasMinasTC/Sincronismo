@@ -2,7 +2,11 @@
   "header": {
     "comment": "eric tasks file for project Sincronismo",
     "warning": "This file was generated automatically, do not edit.",
+<<<<<<< Updated upstream
     "saved": "2026-09-03, 17:22:24"
+=======
+    "saved": "2026-10-05, 13:45:39"
+>>>>>>> Stashed changes
   },
   "ProjectScanFilter": "",
   "Tasks": []

@@ -29,9 +29,13 @@ def convert(conn_ifx, conn_sql, linha_log):
         cr_sql.execute("""
             update DebitoAutomatico set DataCancelamento = getdate()
             where
-                IdDebitoAutomatico = (select PkSql from PkDePara where Tabela = 'DebitoAutomatico' and PkIfx = ?)
+                IdCota = (select IdCota from Cota where IdClube = ? and TipoCota = ? and NumeroCota = ?) and
+                IdBanco = ?
         """, (
-            linha_log.pk
+            chave.cod_clube,
+            chave.cod_tipo_associado,
+            chave.cod_cota,
+            chave.cod_banco,
         ))
 
         cr_sql.close()
@@ -62,35 +66,34 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     cr_sql.execute("""
         update DebitoAutomatico set
-            IdCota = (select IdCota from Cota where IdClube = ? and TipoCota = ? and NumeroCota = ?),
             IdBanco = ?,
             CodigoAgencia = ?,
             NumeroConta = ?,
             DigitoConta = ?,
             OperacaoConta = ?,
             CPF = ?,
-            DataInicio = ?,
             DataCancelamento = ?,
             UltimaAlteracao = getdate()
         where
-            IdDebitoAutomatico = (select PkSql from PkDePara where Tabela = 'DebitoAutomatico' and PkIfx = ?)
+            IdCota = (select IdCota from Cota where IdClube = ? and TipoCota = ? and NumeroCota = ?) and
+            DataInicio = ?
     """,(
-            chave.cod_clube,
-            chave.cod_tipo_associado,
-            chave.cod_cota,
             origem.cod_banco,
             origem.cod_agencia,
             origem.nro_conta,
             origem.dv_conta,
             origem.cod_operacao,
             origem.cpf_titular_conta,
-            origem.dat_ini_autoriza,
             origem.dat_cancelamento,
-            linha_log.pk,
+            
+            chave.cod_clube,
+            chave.cod_tipo_associado,
+            chave.cod_cota,
+            origem.dat_ini_autoriza,
     ))
 
     if cr_sql.rowcount == 0:
-        cr_sql.execute(f"""
+        cr_sql.execute("""
             insert into DebitoAutomatico
             (
                 IdCota,
