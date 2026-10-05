@@ -72,6 +72,11 @@ def convert(conn_ifx, conn_sql, linha_log):
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])
     origem = Linha(*linha) if (linha := cr_ifx.fetchone()) else None
 
+    if not origem:
+        cr_sql.close()
+        raise Exception('Cota não encontrada no informix')
+        return
+
     cr_sql.execute("""
         update Cota set
             IdClube = ?,
