@@ -104,8 +104,8 @@ def convert(conn_ifx, conn_sql, linha_log):
     linha_log.banco = 'minas' if origem.IdClube == 'MTC' else 'nautico' if origem.IdClube == 'MTNC' else 'serra' 
 
     if linha_log.operacao == 'com':
-        cr_ifx.execute(f"""execute procedure {linha_log.banco}:status_cota ('{origem.TipoCota}',{origem.NumeroCota})""")
         cr_ifx.execute('execute procedure fora_de_sincronismo()')
+        cr_ifx.execute(f"""execute procedure {linha_log.banco}:status_cota ('{origem.TipoCota}',{origem.NumeroCota})""")
         return
 
     cr_ifx.execute(f"""

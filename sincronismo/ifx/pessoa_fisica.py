@@ -2,7 +2,6 @@
 #
 
 from recordtype import recordtype
-import os
 
 def convert(conn_ifx, conn_sql, linha_log):
     cr_ifx = conn_ifx.cursor()

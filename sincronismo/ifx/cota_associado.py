@@ -113,10 +113,13 @@ def convert(conn_ifx, conn_sql, linha_log):
             end as idt_status,
             cota_associado.cod_tipo_associado = cod_tipo_prior and cod_cota = cod_cota_prior as idt_prioritaria,
             0 idc_primeira_vez,
-            {linha_log.banco}:restricao(associado.cod_associado, today) as cod_restricao
+            pessoa_fisica.cod_tipo_restricao as cod_restricao
         from {linha_log.banco}:cota_associado as cota_associado
         inner join {linha_log.banco}:associado as associado on
             associado.cod_associado = cota_associado.cod_associado
+        left join {linha_log.banco}:pessoa_fisica as pessoa_fisica on
+            pessoa_fisica.idt_pessoa = 1 and
+            pessoa_fisica.cod_pessoa = associado.cod_associado
         where
             cota_associado.cod_associado = ? and
             cod_tipo_associado = ? and
@@ -335,8 +338,7 @@ if __name__ == "__main__":
             pk
         from mc_log
         where
-            tabela = 'cota_associado' and
-            tentativas = 57
+            tabela = 'cota_associado'
         order by data_hora
     """)
     Linha = recordtype('Linha',[col[0] for col in cr_ifx.description])

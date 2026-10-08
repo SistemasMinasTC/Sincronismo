@@ -83,7 +83,7 @@ class Sincroniza(object):
                            select id from (select banco,tabela,pk,min(id) as id from mc_log where tentativas between {tentativaMinima} and {tentativaMaxima} group by banco,tabela,pk) as Repescagem
                         )
                      )and
-                     current - data_hora >= '2'::interval second to second
+                     current - data_hora >= (2*(tentativas + 1))::interval second to second
                 order by tentativas,data_hora
             """)
 
@@ -106,7 +106,7 @@ class Sincroniza(object):
                            select id from (select tabela,pk,min(id) as id from mc_log with (nolock) where tentativas between {tentativaMinima} and {tentativaMaxima} group by tabela,pk) as Repescagem
                         )
                      )and
-                     datediff(second, data_hora, getdate()) >= 2
+                     datediff(second, data_hora, getdate()) >= 2*(tentativas + 1)
                 order by tentativas,data_hora
             """
             )
@@ -126,11 +126,9 @@ class Sincroniza(object):
 
                 if linha.origem == 'ifx':
                     conexao = 'ifx'
-                    cursor = cr_ifx
                     cursor_update = cr_ifx_update
                 else:
                     conexao = 'sql'
-                    cursor = cr_sql
                     cursor_update = cr_sql_update
 
                 print(linha, end = ' ')
