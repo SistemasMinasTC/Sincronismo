@@ -67,7 +67,7 @@ def convert(conn_ifx, conn_sql, linha_log):
 
         if not dados:
             cr_sql.close()
-            raise Exception('Associado ou Receita não encontrados')
+            raise Exception('Cota, Associado ou Receita não encontrados')
             return
 
         cr_ifx.execute(f"""
@@ -176,7 +176,7 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     if not dados:
         cr_sql.close()
-        raise Exception('Associado ou Receita não encontrados')
+        raise Exception('Cota, Associado ou Receita não encontrados')
         return
 
     cr_sql.execute("""

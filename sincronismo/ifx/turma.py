@@ -145,6 +145,7 @@ def convert(conn_ifx, conn_sql, linha_log):
     linha = cr_sql.fetchone()
     dados = Linha(*linha) if linha else None
     
+    #ERRO SINCRONISMO TURMA
     if dados and not dados.IdLocal:
         if origem.cod_unidade == 1:
             dados.IdLocal = 1039
@@ -154,7 +155,9 @@ def convert(conn_ifx, conn_sql, linha_log):
             dados.IdLocal = 1042
         elif origem.cod_unidade == 4:
             dados.IdLocal = 1041
-        
+        elif origem.cod_unidade == 5:
+            dados.IdLocal = 1047
+
 
     # Turma
     #
