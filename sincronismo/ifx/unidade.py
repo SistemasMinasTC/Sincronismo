@@ -34,6 +34,13 @@ def convert(conn_ifx, conn_sql, linha_log):
             linha_log.pk
         ))
 
+        cr_sql.execute(f"""
+            delete from PkDePara
+            where Tabela = 'Unidade' and PkIfx = ?
+        """, (
+            linha_log.pk
+        ))
+
         cr_sql.close()
         return
 
