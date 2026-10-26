@@ -13,7 +13,16 @@ def convert(conn_ifx, conn_sql, linha_log):
     cr_ifx = conn_ifx.cursor()
     cr_ifx.execute('execute procedure em_sincronismo()')
 
-    Chave = recordtype('Chave', 'idf_naumin')
+    if linha_log.banco == 'minas':
+        cod_clube = 'MTC'
+    elif linha_log.banco == 'nautico':
+        cod_clube = 'MTNC'
+    elif linha_log.banco == 'serra':
+        cod_clube = 'MSDR'
+
+    linha_log.pk = cod_clube+'|'+linha_log.pk
+
+    Chave = recordtype('Chave', 'cod_clube, idf_naumin')
     chave = Chave(*linha_log.pk.split('|'))
 
     if linha_log.operacao == 'del':
@@ -30,8 +39,8 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     cr_ifx.execute(f"""
         select
-            'MTNC|' || cod_rec_nautico as cod_rec_nautico,
-            'MTC|' || cod_rec_minas as cod_rec_minas
+            cod_rec_nautico,
+            cod_rec_minas
         from {linha_log.banco}:rec_nau_minas as rec_nau_minas
         where
             idf_naumin = ?
@@ -49,19 +58,17 @@ def convert(conn_ifx, conn_sql, linha_log):
 
     cr_sql.execute("""
         update EquivalenciaReceita set
-            IdReceitaOrigem = (select PkSql from PkDePara where Tabela = 'Receita' and PkIfx = ?),
-            IdReceitaDestino = (select PkSql from PkDePara where Tabela = 'Receita' and PkIfx = ?),
             UltimaAlteracao = getdate()
         where
-            IdEquivalenciaReceita = (select PkSql from PkDePara where Tabela = 'EquivalenciaReceita' and PkIfx = ?)
+            IdReceitaOrigem = (select IdReceita from Receita where IdClube = ? and CodigoReceita = ?) and
+            IdReceitaDestino = (select IdReceita from Receita where IdClube = 'MTC' and CodigoReceita = ?)
     """,(
+            cod_clube,
             origem.cod_rec_nautico,
             origem.cod_rec_minas,
-            linha_log.pk,
     ))
 
     if cr_sql.rowcount == 0:
-        cr_sql.execute('begin transaction')
 
         cr_sql.execute(f"""
             insert into EquivalenciaReceita
@@ -69,19 +76,14 @@ def convert(conn_ifx, conn_sql, linha_log):
                 IdReceitaOrigem,
                 IdReceitaDestino
             ) values (
-                (select PkSql from PkDePara where Tabela = 'Receita' and PkIfx = ?) /*IdReceitaOrigem*/,
-                (select PkSql from PkDePara where Tabela = 'Receita' and PkIfx = ?) /*IdReceitaDestino*/
+                (select IdReceita from Receita where IdClube = ? and CodigoReceita = ?) /*IdReceitaOrigem*/,
+                (select IdReceita from Receita where IdClube = 'MTC' and CodigoReceita = ?) /*IdReceitaDestino*/
             )
         """,(
+            cod_clube,
             origem.cod_rec_nautico,
             origem.cod_rec_minas
         ))
-
-        cr_sql.execute("""select ident_current('EquivalenciaReceita')""")
-        pkSql = cr_sql.fetchval()
-
-        cr_sql.execute("insert into PkDePara values ('EquivalenciaReceita',?,?)",(pkSql, linha_log.pk,))
-        cr_sql.execute("commit transaction")
 
     cr_sql.close()
 
