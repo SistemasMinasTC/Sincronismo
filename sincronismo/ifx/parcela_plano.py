@@ -20,7 +20,8 @@ def convert(conn_ifx, conn_sql, linha_log):
     elif linha_log.banco == 'serra':
         cod_clube = 'MSDR'
 
-    Chave = recordtype('Chave', 'cod_plano, nro_parcela')
+    linha_log.pk = cod_clube + '|' + linha_log.pk
+    Chave = recordtype('Chave', 'cod_clube, cod_plano, nro_parcela')
     chave = Chave(*linha_log.pk.split('|'))
 
     if linha_log.operacao == 'del':
